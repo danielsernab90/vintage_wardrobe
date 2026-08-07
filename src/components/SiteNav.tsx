@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AccountMenu } from "./AccountMenu";
 
 const links = [
   { href: "/", label: "Home" },
@@ -12,20 +13,6 @@ function SearchIcon() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.25" />
       <path d="M16.5 16.5L20.5 20.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function AccountIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="8.5" r="3.25" stroke="currentColor" strokeWidth="1.25" />
-      <path
-        d="M5.5 19.5c1.4-3.2 3.7-4.75 6.5-4.75s5.1 1.55 6.5 4.75"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-      />
     </svg>
   );
 }
@@ -72,9 +59,7 @@ export function SiteNav() {
           <button type="button" className="p-0.5 transition-opacity hover:opacity-60" aria-label="Search">
             <SearchIcon />
           </button>
-          <Link href="/waitlist" className="p-0.5 transition-opacity hover:opacity-60" aria-label="Account">
-            <AccountIcon />
-          </Link>
+          <AccountMenu />
           <button type="button" className="p-0.5 transition-opacity hover:opacity-60" aria-label="Bag">
             <BagIcon />
           </button>

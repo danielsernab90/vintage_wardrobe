@@ -1,4 +1,5 @@
 import { OrnamentDivider } from "./OrnamentDivider";
+import { ButtonLink } from "./ButtonLink";
 
 export function Hero() {
   return (
@@ -10,6 +11,16 @@ export function Hero() {
         </h1>
         <div className="mt-8 md:mt-10">
           <OrnamentDivider />
+        </div>
+        <div className="mt-10 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
+          <div className="sm:flex-1">
+            <ButtonLink href="/waitlist">Join Waitlist</ButtonLink>
+          </div>
+          <div className="sm:flex-1">
+            <ButtonLink href="/quiz" variant="outline">
+              Find Your Fit
+            </ButtonLink>
+          </div>
         </div>
       </div>
     </section>

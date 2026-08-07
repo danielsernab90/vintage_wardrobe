@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Garment } from "@/data/garments";
 import { ConditionGradeTag } from "./ConditionGradeTag";
+import { GarmentImage } from "./GarmentImage";
 
 type Props = {
   garment: Garment;
@@ -15,13 +15,10 @@ export function CatalogTile({ garment, priority = false }: Props) {
       className="group block bg-paper transition-opacity hover:opacity-80"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-parchment">
-        <Image
-          src={`/garments/${garment.id}.svg`}
+        <GarmentImage
+          src={garment.image}
           alt={garment.name}
-          fill
-          unoptimized
           priority={priority}
-          className="object-cover"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
         <ConditionGradeTag

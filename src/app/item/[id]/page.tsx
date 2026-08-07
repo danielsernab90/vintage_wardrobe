@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/ButtonLink";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
+import { GarmentImage } from "@/components/GarmentImage";
 import {
   formatSpecimenId,
   garments,
@@ -36,13 +36,10 @@ export default async function ItemDetailPage({ params }: PageProps) {
     <section className="bg-paper">
       <div className="grid grid-cols-1 lg:grid-cols-12">
         <div className="relative aspect-[4/5] bg-parchment lg:col-span-7 lg:aspect-auto lg:min-h-[calc(100vh-4.5rem)]">
-          <Image
-            src={`/garments/${garment.id}.svg`}
+          <GarmentImage
+            src={garment.image}
             alt={garment.name}
-            fill
-            unoptimized
             priority
-            className="object-cover"
             sizes="(max-width: 1024px) 100vw, 58vw"
           />
         </div>

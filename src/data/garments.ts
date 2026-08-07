@@ -11,6 +11,7 @@ export type Garment = {
   size: string;
   category: string;
   conditionNote: string;
+  image: string;
 };
 
 export const garments: Garment[] = [
@@ -25,6 +26,7 @@ export const garments: Garment[] = [
     size: "M",
     category: "Outerwear",
     conditionNote: "Light wear at collar, no visible flaws",
+    image: "/images/spec-014.jpg",
   },
   {
     id: "SPEC-021",
@@ -37,6 +39,7 @@ export const garments: Garment[] = [
     size: "L",
     category: "Knitwear",
     conditionNote: "Minor pilling at cuffs, structurally sound",
+    image: "/images/spec-021.jpg",
   },
   {
     id: "SPEC-033",
@@ -49,6 +52,7 @@ export const garments: Garment[] = [
     size: "M",
     category: "Outerwear",
     conditionNote: "Excellent vintage condition, subtle fading typical of era",
+    image: "/images/spec-033.jpg",
   },
   {
     id: "SPEC-042",
@@ -61,6 +65,7 @@ export const garments: Garment[] = [
     size: "S",
     category: "Shirts",
     conditionNote: "Soft from wear, small fade spot on left sleeve",
+    image: "/images/spec-042.jpg",
   },
   {
     id: "SPEC-058",
@@ -73,6 +78,7 @@ export const garments: Garment[] = [
     size: "L",
     category: "Outerwear",
     conditionNote: "Well-preserved corduroy, no thinning",
+    image: "/images/spec-058.jpg",
   },
   {
     id: "SPEC-067",
@@ -85,6 +91,7 @@ export const garments: Garment[] = [
     size: "M",
     category: "Tailoring",
     conditionNote: "Sharp tailoring intact, one interior lining repair",
+    image: "/images/spec-067.jpg",
   },
   {
     id: "SPEC-071",
@@ -97,6 +104,7 @@ export const garments: Garment[] = [
     size: "XL",
     category: "Outerwear",
     conditionNote: "Heavy character wear, visible patina throughout — priced accordingly",
+    image: "/images/spec-071.jpg",
   },
   {
     id: "SPEC-089",
@@ -109,6 +117,7 @@ export const garments: Garment[] = [
     size: "M",
     category: "Shirts",
     conditionNote: "Soft flannel, light fading from washing",
+    image: "/images/spec-089.jpg",
   },
 ];
 

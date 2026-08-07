@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
+import { Providers } from "@/components/Providers";
 import { SiteNav } from "@/components/SiteNav";
 import "./globals.css";
 
@@ -34,8 +35,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink">
-        <SiteNav />
-        <main className="flex flex-1 flex-col">{children}</main>
+        <Providers>
+          <SiteNav />
+          <main className="flex flex-1 flex-col">{children}</main>
+        </Providers>
       </body>
     </html>
   );
