@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ButtonLink } from "@/components/ButtonLink";
+import { AddToRotationButton } from "@/components/AddToRotationButton";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { GarmentImage } from "@/components/GarmentImage";
 import {
@@ -68,10 +68,13 @@ export default async function ItemDetailPage({ params }: PageProps) {
 
           <p className="mt-8 font-display text-3xl text-bottle md:text-4xl">
             ${garment.price}
+            <span className="ml-2 font-sans text-sm tracking-normal text-ink/45">
+              /cycle
+            </span>
           </p>
 
           <div className="mt-8 max-w-xs">
-            <ButtonLink href="/waitlist">Add to Rotation</ButtonLink>
+            <AddToRotationButton garmentId={garment.id} />
           </div>
         </div>
       </div>
