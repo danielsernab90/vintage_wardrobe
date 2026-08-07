@@ -62,3 +62,23 @@ export function getInventoryStats(items: InventoryItem[] = inventory) {
 export function isThinMargin(margin: number) {
   return margin < THIN_MARGIN_THRESHOLD;
 }
+
+const HIGH_CYCLE_THRESHOLD = 8;
+
+function isGradeC(grade: string) {
+  return grade === "C" || grade === "C+" || grade === "C-";
+}
+
+/** Items needing write-off / repair review: Grade C or 8+ cycles. */
+export function getDecisionQueue(items: InventoryItem[] = inventory) {
+  return items.filter(
+    (item) => isGradeC(item.grade) || item.cycles >= HIGH_CYCLE_THRESHOLD,
+  );
+}
+
+export function decisionReason(item: InventoryItem) {
+  const reasons: string[] = [];
+  if (isGradeC(item.grade)) reasons.push("Grade C");
+  if (item.cycles >= HIGH_CYCLE_THRESHOLD) reasons.push(`${item.cycles} cycles`);
+  return reasons.join(" · ");
+}

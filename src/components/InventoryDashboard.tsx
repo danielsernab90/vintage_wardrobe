@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
+import { DecisionQueue } from "@/components/DecisionQueue";
 import {
   getInventoryStats,
   inventory,
@@ -235,6 +236,8 @@ export function InventoryDashboard() {
             </tbody>
           </table>
         </div>
+
+        <DecisionQueue />
       </div>
     </section>
   );
