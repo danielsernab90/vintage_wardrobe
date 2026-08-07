@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { DecisionQueue } from "@/components/DecisionQueue";
+import { TurnaroundPipeline } from "@/components/TurnaroundPipeline";
 import {
   getInventoryStats,
   inventory,
@@ -38,7 +39,9 @@ const gradeRank: Record<string, number> = {
 const statusRank: Record<InventoryStatus, number> = {
   "In Rotation": 1,
   Cleaning: 2,
-  Retired: 3,
+  Ready: 3,
+  Returned: 4,
+  Retired: 5,
 };
 
 function formatAverageMargin(value: number) {
@@ -117,6 +120,10 @@ function statusTone(status: InventoryStatus) {
       return "text-bottle";
     case "Cleaning":
       return "text-brass";
+    case "Ready":
+      return "text-ink/70";
+    case "Returned":
+      return "text-ink/55";
     case "Retired":
       return "text-ink/45";
   }
@@ -238,6 +245,7 @@ export function InventoryDashboard() {
         </div>
 
         <DecisionQueue />
+        <TurnaroundPipeline />
       </div>
     </section>
   );

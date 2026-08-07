@@ -1,6 +1,13 @@
 import { garments, type Garment } from "./garments";
 
-export type InventoryStatus = "In Rotation" | "Cleaning" | "Retired";
+export type InventoryStatus =
+  | "In Rotation"
+  | "Cleaning"
+  | "Ready"
+  | "Returned"
+  | "Retired";
+
+export type PipelineStage = "Returned" | "Cleaning" | "Ready" | "Shipped";
 
 export type InventoryItem = Garment & {
   status: InventoryStatus;
@@ -8,16 +15,22 @@ export type InventoryItem = Garment & {
   margin: number;
 };
 
-/** Demo inventory overlay — status is mock-only, not on the garment catalog. */
+/**
+ * Status assignment is consistent with turnaround pipeline:
+ * Returned/Retired → Returned column
+ * Cleaning → Cleaning
+ * Ready → Ready
+ * In Rotation → Shipped
+ */
 const statusById: Record<string, InventoryStatus> = {
   "SPEC-014": "In Rotation",
   "SPEC-021": "Cleaning",
   "SPEC-033": "In Rotation",
-  "SPEC-042": "In Rotation",
+  "SPEC-042": "Ready",
   "SPEC-058": "Cleaning",
-  "SPEC-067": "In Rotation",
+  "SPEC-067": "Returned",
   "SPEC-071": "Retired",
-  "SPEC-089": "In Rotation",
+  "SPEC-089": "Ready",
 };
 
 /** Mock cost/cycle reflecting cleaning + wear/write-off risk. */
@@ -33,6 +46,27 @@ const costById: Record<string, number> = {
 };
 
 export const THIN_MARGIN_THRESHOLD = 10;
+
+export const PIPELINE_STAGES: PipelineStage[] = [
+  "Returned",
+  "Cleaning",
+  "Ready",
+  "Shipped",
+];
+
+export function statusToPipelineStage(status: InventoryStatus): PipelineStage {
+  switch (status) {
+    case "Returned":
+    case "Retired":
+      return "Returned";
+    case "Cleaning":
+      return "Cleaning";
+    case "Ready":
+      return "Ready";
+    case "In Rotation":
+      return "Shipped";
+  }
+}
 
 export const inventory: InventoryItem[] = garments.map((garment) => {
   const costPerCycle = costById[garment.id] ?? 0;
@@ -57,6 +91,18 @@ export function getInventoryStats(items: InventoryItem[] = inventory) {
     retired: items.filter((i) => i.status === "Retired").length,
     averageMargin,
   };
+}
+
+export function getPipelineBoard(items: InventoryItem[] = inventory) {
+  const columns = Object.fromEntries(
+    PIPELINE_STAGES.map((stage) => [stage, [] as InventoryItem[]]),
+  ) as Record<PipelineStage, InventoryItem[]>;
+
+  for (const item of items) {
+    columns[statusToPipelineStage(item.status)].push(item);
+  }
+
+  return columns;
 }
 
 export function isThinMargin(margin: number) {
