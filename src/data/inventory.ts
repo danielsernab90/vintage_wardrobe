@@ -139,3 +139,31 @@ export const revenueSnapshot = {
   avgItemsPerSubscriber: 4.3,
   avgRevenuePerSubscriber: 82,
 } as const;
+
+const LOW_STOCK_THRESHOLD = 1;
+
+export type SourcingAlert = {
+  category: string;
+  count: number;
+  message: string;
+};
+
+/** Categories at or below low-stock threshold (currently 1 item). */
+export function getSourcingAlerts(items: InventoryItem[] = inventory): SourcingAlert[] {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .filter(([, count]) => count <= LOW_STOCK_THRESHOLD)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([category, count]) => ({
+      category,
+      count,
+      message:
+        count === 1
+          ? `${category}: Only 1 item in rotation — consider sourcing more`
+          : `${category}: Only ${count} items in rotation — consider sourcing more`,
+    }));
+}

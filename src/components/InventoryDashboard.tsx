@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { DecisionQueue } from "@/components/DecisionQueue";
+import { SourcingAlerts } from "@/components/SourcingAlerts";
 import { TurnaroundPipeline } from "@/components/TurnaroundPipeline";
 import {
   getInventoryStats,
@@ -289,6 +290,7 @@ export function InventoryDashboard() {
 
         <DecisionQueue />
         <TurnaroundPipeline />
+        <SourcingAlerts />
       </div>
     </section>
   );
