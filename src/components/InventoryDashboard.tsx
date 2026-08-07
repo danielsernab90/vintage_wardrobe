@@ -6,11 +6,20 @@ import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import {
   getInventoryStats,
   inventory,
+  isThinMargin,
   type InventoryItem,
   type InventoryStatus,
 } from "@/data/inventory";
 
-type SortKey = "id" | "name" | "grade" | "cycles" | "status" | "price";
+type SortKey =
+  | "id"
+  | "name"
+  | "grade"
+  | "cycles"
+  | "status"
+  | "price"
+  | "cost"
+  | "margin";
 type SortDir = "asc" | "desc";
 
 const gradeRank: Record<string, number> = {
@@ -30,6 +39,11 @@ const statusRank: Record<InventoryStatus, number> = {
   Cleaning: 2,
   Retired: 3,
 };
+
+function formatAverageMargin(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? `$${rounded}` : `$${rounded.toFixed(1)}`;
+}
 
 function compareItems(a: InventoryItem, b: InventoryItem, key: SortKey, dir: SortDir) {
   const factor = dir === "asc" ? 1 : -1;
@@ -53,6 +67,12 @@ function compareItems(a: InventoryItem, b: InventoryItem, key: SortKey, dir: Sor
       break;
     case "price":
       result = a.price - b.price;
+      break;
+    case "cost":
+      result = a.costPerCycle - b.costPerCycle;
+      break;
+    case "margin":
+      result = a.margin - b.margin;
       break;
   }
 
@@ -117,14 +137,18 @@ export function InventoryDashboard() {
       return;
     }
     setSortKey(key);
-    setSortDir(key === "grade" || key === "cycles" || key === "price" ? "asc" : "asc");
+    setSortDir("asc");
   }
 
   const summary = [
-    { label: "Total Items", value: stats.total },
-    { label: "In Rotation", value: stats.inRotation },
-    { label: "In Cleaning", value: stats.cleaning },
-    { label: "Retired", value: stats.retired },
+    { label: "Total Items", value: String(stats.total) },
+    { label: "In Rotation", value: String(stats.inRotation) },
+    { label: "In Cleaning", value: String(stats.cleaning) },
+    { label: "Retired", value: String(stats.retired) },
+    {
+      label: "Average Margin per Item",
+      value: formatAverageMargin(stats.averageMargin),
+    },
   ];
 
   return (
@@ -138,12 +162,12 @@ export function InventoryDashboard() {
             Inventory Dashboard
           </h1>
           <p className="mt-2 max-w-2xl font-sans text-sm text-ink/65">
-            Read-only snapshot of the current capsule — condition, cycles, and
-            service status across the archive.
+            Read-only snapshot of the current capsule — condition, cycles, cost,
+            and margin across the archive.
           </p>
         </header>
 
-        <div className="mt-8 grid grid-cols-2 gap-px bg-parchment md:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-px bg-parchment md:grid-cols-5">
           {summary.map((stat) => (
             <div key={stat.label} className="bg-paper px-4 py-5 md:px-5">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50">
@@ -157,7 +181,7 @@ export function InventoryDashboard() {
         </div>
 
         <div className="mt-10 overflow-x-auto">
-          <table className="w-full min-w-[52rem] border-collapse text-left">
+          <table className="w-full min-w-[64rem] border-collapse text-left">
             <thead>
               <tr className="border-b border-parchment">
                 <SortHeader label="Item ID" column="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
@@ -166,6 +190,8 @@ export function InventoryDashboard() {
                 <SortHeader label="Cycles" column="cycles" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="Status" column="status" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="Price/cycle" column="price" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortHeader label="Cost/Cycle" column="cost" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortHeader label="Margin" column="margin" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
               </tr>
             </thead>
             <tbody>
@@ -191,8 +217,18 @@ export function InventoryDashboard() {
                   <td className={`py-3.5 pr-4 font-mono text-[10px] uppercase tracking-[0.16em] ${statusTone(item.status)}`}>
                     {item.status}
                   </td>
-                  <td className="py-3.5 font-mono text-[12px] tabular-nums text-bottle">
+                  <td className="py-3.5 pr-4 font-mono text-[12px] tabular-nums text-ink">
                     ${item.price}
+                  </td>
+                  <td className="py-3.5 pr-4 font-mono text-[12px] tabular-nums text-ink/70">
+                    ${item.costPerCycle}
+                  </td>
+                  <td
+                    className={`py-3.5 font-mono text-[12px] tabular-nums ${
+                      isThinMargin(item.margin) ? "text-oxblood" : "text-bottle"
+                    }`}
+                  >
+                    ${item.margin}
                   </td>
                 </tr>
               ))}
