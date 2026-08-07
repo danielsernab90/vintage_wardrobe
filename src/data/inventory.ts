@@ -128,3 +128,14 @@ export function decisionReason(item: InventoryItem) {
   if (item.cycles >= HIGH_CYCLE_THRESHOLD) reasons.push(`${item.cycles} cycles`);
   return reasons.join(" · ");
 }
+
+/**
+ * Reconciled demo revenue from mock subscriber mix:
+ * 20 Starter @ $49 + 12 Signature @ $99 + 6 Archivist @ $159 = $3,122 MRR
+ */
+export const revenueSnapshot = {
+  activeSubscribers: 38,
+  monthlyRecurringRevenue: 3122,
+  avgItemsPerSubscriber: 4.3,
+  avgRevenuePerSubscriber: 82,
+} as const;
