@@ -8,10 +8,13 @@ import {
   type SubscriberStatus,
   type SubscriberTier,
 } from "@/data/subscribers";
-import { fetchSubscribers } from "@/lib/subscribers";
+import { fetchSubscribers, updateSubscriber } from "@/lib/subscribers";
 
 type SortKey = "name" | "tier" | "joinDate" | "itemsOut" | "status";
 type SortDir = "asc" | "desc";
+
+const TIERS: SubscriberTier[] = ["Starter", "Signature", "Archivist"];
+const STATUSES: SubscriberStatus[] = ["Active", "Paused"];
 
 const tierRank: Record<SubscriberTier, number> = {
   Starter: 1,
@@ -94,11 +97,29 @@ function SortHeader({
   );
 }
 
-function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
+function SubscriberNameMenu({
+  subscriber,
+  onUpdated,
+}: {
+  subscriber: Subscriber;
+  onUpdated: (next: Subscriber) => void;
+}) {
   const { openThreadForSubscriber } = useMessagesUi();
   const [open, setOpen] = useState(false);
   const [showAddress, setShowAddress] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [tier, setTier] = useState<SubscriberTier>(subscriber.tier);
+  const [status, setStatus] = useState<SubscriberStatus>(subscriber.status);
+  const [address, setAddress] = useState(subscriber.address);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setTier(subscriber.tier);
+    setStatus(subscriber.status);
+    setAddress(subscriber.address);
+  }, [subscriber]);
 
   useEffect(() => {
     if (!open) return;
@@ -106,12 +127,16 @@ function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false);
         setShowAddress(false);
+        setEditing(false);
+        setFormError(null);
       }
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpen(false);
         setShowAddress(false);
+        setEditing(false);
+        setFormError(null);
       }
     }
     document.addEventListener("mousedown", onPointerDown);
@@ -122,6 +147,31 @@ function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
     };
   }, [open]);
 
+  function closeMenu() {
+    setOpen(false);
+    setShowAddress(false);
+    setEditing(false);
+    setFormError(null);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setFormError(null);
+    try {
+      const next = await updateSubscriber(subscriber.id, {
+        tier,
+        status,
+        address,
+      });
+      onUpdated(next);
+      closeMenu();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="relative inline-block" ref={rootRef}>
       <button
@@ -129,7 +179,11 @@ function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
         onClick={() => {
           setOpen((prev) => {
             const next = !prev;
-            if (!next) setShowAddress(false);
+            if (!next) {
+              setShowAddress(false);
+              setEditing(false);
+              setFormError(null);
+            }
             return next;
           });
         }}
@@ -142,35 +196,144 @@ function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 top-full z-40 mt-1 min-w-[11rem] max-w-[16rem] border border-brass bg-paper shadow-[0_6px_18px_rgba(28,26,23,0.1)]"
+          className={`absolute left-0 top-full z-40 mt-1 border border-brass bg-paper shadow-[0_6px_18px_rgba(28,26,23,0.1)] ${
+            editing ? "w-[18rem] max-w-[calc(100vw-2rem)]" : "min-w-[11rem] max-w-[16rem]"
+          }`}
         >
-          <button
-            type="button"
-            role="menuitem"
-            className="block w-full px-4 py-2.5 text-left font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-opacity hover:opacity-60"
-            onClick={() => {
-              setOpen(false);
-              setShowAddress(false);
-              openThreadForSubscriber(subscriber.id);
-            }}
-          >
-            Message
-          </button>
-          <div className="h-px bg-parchment" aria-hidden="true" />
-          <button
-            type="button"
-            role="menuitem"
-            className="block w-full px-4 py-2.5 text-left font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-opacity hover:opacity-60"
-            onClick={() => setShowAddress((prev) => !prev)}
-            aria-expanded={showAddress}
-          >
-            Address
-          </button>
-          {showAddress ? (
-            <p className="border-t border-parchment px-4 py-3 font-sans text-sm font-normal normal-case leading-snug tracking-normal text-ink/80">
-              {subscriber.address || "No address on file."}
-            </p>
-          ) : null}
+          {!editing ? (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full px-4 py-2.5 text-left font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-opacity hover:opacity-60"
+                onClick={() => {
+                  closeMenu();
+                  openThreadForSubscriber(subscriber.id);
+                }}
+              >
+                Message
+              </button>
+              <div className="h-px bg-parchment" aria-hidden="true" />
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full px-4 py-2.5 text-left font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-opacity hover:opacity-60"
+                onClick={() => {
+                  setShowAddress((prev) => !prev);
+                  setEditing(false);
+                }}
+                aria-expanded={showAddress}
+              >
+                Address
+              </button>
+              {showAddress ? (
+                <p className="border-t border-parchment px-4 py-3 font-sans text-sm font-normal normal-case leading-snug tracking-normal text-ink/80">
+                  {subscriber.address || "No address on file."}
+                </p>
+              ) : null}
+              <div className="h-px bg-parchment" aria-hidden="true" />
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full px-4 py-2.5 text-left font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-opacity hover:opacity-60"
+                onClick={() => {
+                  setEditing(true);
+                  setShowAddress(false);
+                  setTier(subscriber.tier);
+                  setStatus(subscriber.status);
+                  setAddress(subscriber.address);
+                  setFormError(null);
+                }}
+              >
+                Edit
+              </button>
+            </>
+          ) : (
+            <div className="px-4 py-4" role="form" aria-label={`Edit ${subscriber.name}`}>
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-brass">
+                Edit subscriber
+              </p>
+              <p className="mt-2 font-display text-base text-ink">{subscriber.name}</p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
+                Joined {formatJoinDate(subscriber.joinDate)}
+              </p>
+
+              <label className="mt-4 block font-mono text-[10px] uppercase tracking-[0.18em] text-ink/55">
+                Tier
+                <select
+                  value={tier}
+                  onChange={(event) =>
+                    setTier(event.target.value as SubscriberTier)
+                  }
+                  className="mt-2 w-full border border-parchment bg-paper px-3 py-2 font-sans text-sm normal-case tracking-normal text-ink outline-none focus:border-brass"
+                >
+                  {TIERS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="mt-3 block font-mono text-[10px] uppercase tracking-[0.18em] text-ink/55">
+                Status
+                <select
+                  value={status}
+                  onChange={(event) =>
+                    setStatus(event.target.value as SubscriberStatus)
+                  }
+                  className="mt-2 w-full border border-parchment bg-paper px-3 py-2 font-sans text-sm normal-case tracking-normal text-ink outline-none focus:border-brass"
+                >
+                  {STATUSES.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="mt-3 block font-mono text-[10px] uppercase tracking-[0.18em] text-ink/55">
+                Address
+                <textarea
+                  value={address}
+                  onChange={(event) => setAddress(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full resize-y border border-parchment bg-paper px-3 py-2 font-sans text-sm font-normal normal-case leading-snug tracking-normal text-ink outline-none focus:border-brass"
+                />
+              </label>
+
+              {formError ? (
+                <p className="mt-3 font-sans text-sm normal-case tracking-normal text-red-800" role="alert">
+                  {formError}
+                </p>
+              ) : null}
+
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void handleSave()}
+                  className="inline-flex flex-1 items-center justify-center bg-ink px-3 py-2.5 font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
+                >
+                  {saving ? "Saving…" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    setEditing(false);
+                    setFormError(null);
+                    setTier(subscriber.tier);
+                    setStatus(subscriber.status);
+                    setAddress(subscriber.address);
+                  }}
+                  className="inline-flex flex-1 items-center justify-center border border-parchment px-3 py-2.5 font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-opacity hover:opacity-70 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
     </div>
@@ -201,6 +364,12 @@ export function SubscriberRoster() {
     void loadRoster();
   }, [loadRoster]);
 
+  const handleUpdated = useCallback((next: Subscriber) => {
+    setRoster((prev) =>
+      prev.map((row) => (row.id === next.id ? next : row)),
+    );
+  }, []);
+
   const rows = useMemo(
     () => [...roster].sort((a, b) => compare(a, b, sortKey, sortDir)),
     [roster, sortKey, sortDir],
@@ -225,8 +394,8 @@ export function SubscriberRoster() {
           Subscriber Roster
         </h2>
         <p className="mt-2 max-w-2xl font-sans text-sm text-ink/65">
-          Live subscriber base from Supabase — click a name to message or view
-          address.
+          Live subscriber base from Supabase — click a name to message, view
+          address, or edit tier and status.
         </p>
       </div>
 
@@ -253,7 +422,10 @@ export function SubscriberRoster() {
           <ul className="space-y-0 divide-y divide-parchment px-5 py-2 md:hidden">
             {rows.map((sub) => (
               <li key={sub.id} className="py-4">
-                <SubscriberNameMenu subscriber={sub} />
+                <SubscriberNameMenu
+                  subscriber={sub}
+                  onUpdated={handleUpdated}
+                />
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink/55">
                   {sub.tier} · Joined {formatJoinDate(sub.joinDate)}
                 </p>
@@ -319,7 +491,10 @@ export function SubscriberRoster() {
                 {rows.map((sub) => (
                   <tr key={sub.id} className="border-b border-parchment/70">
                     <td className="py-3.5 pr-4">
-                      <SubscriberNameMenu subscriber={sub} />
+                      <SubscriberNameMenu
+                        subscriber={sub}
+                        onUpdated={handleUpdated}
+                      />
                     </td>
                     <td className="py-3.5 pr-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink/70">
                       {sub.tier}

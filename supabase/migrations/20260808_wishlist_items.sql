@@ -21,3 +21,6 @@ create policy "Allow all for now"
   with check (true);
 
 comment on table public.wishlist_items is 'Items saved for next rotation by a subscriber';
+
+grant select, insert, update, delete on table public.wishlist_items to anon, authenticated, service_role;
+grant usage, select on all sequences in schema public to anon, authenticated, service_role;

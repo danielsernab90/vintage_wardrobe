@@ -65,3 +65,28 @@ export async function updateSubscriberAddress(
   if (error) throw error;
   return (data?.address as string | null)?.trim() || "";
 }
+
+export type SubscriberEditableFields = {
+  tier: SubscriberTier;
+  status: SubscriberStatus;
+  address: string;
+};
+
+export async function updateSubscriber(
+  subscriberId: string,
+  fields: SubscriberEditableFields,
+): Promise<Subscriber> {
+  const { data, error } = await supabase
+    .from("subscribers")
+    .update({
+      tier: fields.tier,
+      status: fields.status,
+      address: fields.address.trim(),
+    })
+    .eq("id", subscriberId)
+    .select("id, name, tier, join_date, items_out, status, address")
+    .single();
+
+  if (error) throw error;
+  return rowToSubscriber(data as SubscriberRow);
+}

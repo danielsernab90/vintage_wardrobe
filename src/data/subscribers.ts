@@ -60,7 +60,7 @@ export const subscribers: Subscriber[] = [
     joinDate: "2026-03-12",
     itemsOut: 3,
     status: "Active",
-    address: "903 West End Avenue, New York, NY 10025",
+    address: "441 Hudson Street, Apt 4B, New York, NY 10014",
   },
   {
     id: "SUB-006",
