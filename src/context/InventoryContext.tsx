@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { ConditionGrade, Garment } from "@/data/garments";
 import {
+  discountedPriceFromPercent,
   inventory as seedInventory,
   statusToPipelineStage,
   type InventoryItem,
@@ -38,7 +39,12 @@ type InventoryContextValue = {
   addItem: (values: InventoryFormValues) => void;
   updateItem: (id: string, values: Omit<InventoryFormValues, "id">) => void;
   setPipelineStage: (id: string, stage: PipelineStage) => void;
-  applyReturnDecision: (id: string, decision: QueueDecision) => void;
+  applyReturnDecision: (
+    id: string,
+    decision: QueueDecision,
+    options?: { discountPercent?: number },
+  ) => void;
+  removeDiscount: (id: string) => void;
 };
 
 const InventoryContext = createContext<InventoryContextValue | null>(null);
@@ -172,43 +178,91 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const applyReturnDecision = useCallback(
-    (id: string, decision: QueueDecision) => {
+    (
+      id: string,
+      decision: QueueDecision,
+      options?: { discountPercent?: number },
+    ) => {
       setItems((prev) =>
         prev.map((item) => {
           if (item.id !== id) return item;
 
           if (decision === "Retire") {
+            const restored = item.originalPrice ?? item.price;
             return {
               ...item,
               status: "Retired",
+              price: restored,
+              margin: restored - item.costPerCycle,
+              originalPrice: undefined,
+              discountPercent: undefined,
               shippedTo: undefined,
             };
           }
 
-          let incidents = item.incidents;
-          if (decision === "Repair") {
-            const note =
-              "Repair noted during return review, sent to cleaning";
-            const alreadyLogged = incidents.some((entry) => entry.note === note);
-            if (!alreadyLogged) {
-              incidents = [
-                { date: todayIncidentDate(), note },
-                ...incidents,
-              ];
-            }
-          }
-
-          return {
+          let next: InventoryItem = {
             ...item,
             status: "Cleaning",
             shippedTo: undefined,
-            incidents,
           };
+
+          if (decision === "Discount") {
+            const percent = options?.discountPercent;
+            if (percent == null || percent <= 0 || percent >= 100) {
+              return item;
+            }
+            const base = item.originalPrice ?? item.price;
+            const discounted = discountedPriceFromPercent(base, percent);
+            next = {
+              ...next,
+              originalPrice: base,
+              discountPercent: percent,
+              price: discounted,
+              margin: discounted - item.costPerCycle,
+            };
+          }
+
+          if (decision === "Repair") {
+            const note =
+              "Repair noted during return review, sent to cleaning";
+            const alreadyLogged = next.incidents.some(
+              (entry) => entry.note === note,
+            );
+            if (!alreadyLogged) {
+              next = {
+                ...next,
+                incidents: [
+                  { date: todayIncidentDate(), note },
+                  ...next.incidents,
+                ],
+              };
+            }
+          }
+
+          return next;
         }),
       );
     },
     [],
   );
+
+  const removeDiscount = useCallback((id: string) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id || item.originalPrice == null) return item;
+        const restored = item.originalPrice;
+        return {
+          ...item,
+          price: restored,
+          margin: restored - item.costPerCycle,
+          originalPrice: undefined,
+          discountPercent: undefined,
+          status: "In Rotation",
+          shippedTo: item.shippedTo,
+        };
+      }),
+    );
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -219,6 +273,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       updateItem,
       setPipelineStage,
       applyReturnDecision,
+      removeDiscount,
     }),
     [
       items,
@@ -228,6 +283,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       updateItem,
       setPipelineStage,
       applyReturnDecision,
+      removeDiscount,
     ],
   );
 

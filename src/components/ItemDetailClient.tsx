@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AddToRotationButton } from "@/components/AddToRotationButton";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
+import { CyclePrice } from "@/components/CyclePrice";
 import { GarmentImage } from "@/components/GarmentImage";
 import { useInventory } from "@/context/InventoryContext";
 import { formatSpecimenId } from "@/data/garments";
@@ -69,12 +70,13 @@ export function ItemDetailClient({ id }: Props) {
             </p>
           </div>
 
-          <p className="mt-8 font-display text-3xl text-bottle md:text-4xl">
-            ${garment.price}
-            <span className="ml-2 font-sans text-sm tracking-normal text-ink/45">
-              /cycle
-            </span>
-          </p>
+          <div className="mt-8">
+            <CyclePrice
+              price={garment.price}
+              originalPrice={garment.originalPrice}
+              size="lg"
+            />
+          </div>
 
           <div className="mt-8 max-w-xs">
             <AddToRotationButton garmentId={garment.id} />

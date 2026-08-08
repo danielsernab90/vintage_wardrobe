@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ActivityLog } from "@/components/ActivityLog";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
+import { CyclePrice } from "@/components/CyclePrice";
 import { IncidentLogModal } from "@/components/IncidentLogModal";
 import { InventoryItemModal } from "@/components/InventoryItemModal";
 import { RevenueSnapshot } from "@/components/RevenueSnapshot";
@@ -310,7 +311,13 @@ export function InventoryDashboard() {
                   <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink/40">
                     Price
                   </p>
-                  <p className="mt-1 font-mono text-sm text-ink">${item.price}</p>
+                  <div className="mt-1">
+                    <CyclePrice
+                      price={item.price}
+                      originalPrice={item.originalPrice}
+                      size="sm"
+                    />
+                  </div>
                 </div>
                 <div>
                   <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink/40">
@@ -379,8 +386,12 @@ export function InventoryDashboard() {
                   <td className={`py-3.5 pr-4 font-mono text-[10px] uppercase tracking-[0.16em] ${statusTone(item.displayStatus)}`}>
                     {item.displayStatus}
                   </td>
-                  <td className="py-3.5 pr-4 font-mono text-[12px] tabular-nums text-ink">
-                    ${item.price}
+                  <td className="py-3.5 pr-4">
+                    <CyclePrice
+                      price={item.price}
+                      originalPrice={item.originalPrice}
+                      size="sm"
+                    />
                   </td>
                   <td className="py-3.5 pr-4 font-mono text-[12px] tabular-nums text-ink/70">
                     ${item.costPerCycle}

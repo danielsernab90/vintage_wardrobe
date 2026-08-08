@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
+import { DiscountModal } from "@/components/DiscountModal";
 import {
   QUEUE_DECISIONS,
   useDecisions,
@@ -11,6 +13,7 @@ import { useInventory } from "@/context/InventoryContext";
 import {
   getPipelineBoard,
   highRiskReason,
+  isDiscounted,
   isHighRiskReturn,
   PIPELINE_STAGES,
   statusToPipelineStage,
@@ -19,9 +22,13 @@ import {
 } from "@/data/inventory";
 
 export function TurnaroundPipeline() {
-  const { items, setPipelineStage, applyReturnDecision } = useInventory();
+  const { items, setPipelineStage, applyReturnDecision, removeDiscount } =
+    useInventory();
   const { getDecision, setDecision, clearDecision } = useDecisions();
   const board = getPipelineBoard(items);
+  const [discountTarget, setDiscountTarget] = useState<InventoryItem | null>(
+    null,
+  );
 
   function handleMove(id: string, stage: PipelineStage) {
     if (stage === "Needs Attention") {
@@ -31,8 +38,26 @@ export function TurnaroundPipeline() {
   }
 
   function handleDecision(item: InventoryItem, decision: QueueDecision) {
+    if (decision === "Discount") {
+      setDiscountTarget(item);
+      return;
+    }
     setDecision(item.id, decision);
     applyReturnDecision(item.id, decision);
+  }
+
+  function handleDiscountConfirm(percent: number) {
+    if (!discountTarget) return;
+    setDecision(discountTarget.id, "Discount");
+    applyReturnDecision(discountTarget.id, "Discount", {
+      discountPercent: percent,
+    });
+    setDiscountTarget(null);
+  }
+
+  function handleRemoveDiscount(id: string) {
+    removeDiscount(id);
+    clearDecision(id);
   }
 
   return (
@@ -60,9 +85,19 @@ export function TurnaroundPipeline() {
             getDecision={getDecision}
             onMove={handleMove}
             onDecision={handleDecision}
+            onRemoveDiscount={handleRemoveDiscount}
           />
         ))}
       </div>
+
+      {discountTarget ? (
+        <DiscountModal
+          itemName={discountTarget.name}
+          currentPrice={discountTarget.originalPrice ?? discountTarget.price}
+          onClose={() => setDiscountTarget(null)}
+          onConfirm={handleDiscountConfirm}
+        />
+      ) : null}
     </section>
   );
 }
@@ -74,6 +109,7 @@ function PipelineColumn({
   getDecision,
   onMove,
   onDecision,
+  onRemoveDiscount,
 }: {
   stage: PipelineStage;
   items: InventoryItem[];
@@ -81,6 +117,7 @@ function PipelineColumn({
   getDecision: (id: string) => QueueDecision | undefined;
   onMove: (id: string, stage: PipelineStage) => void;
   onDecision: (item: InventoryItem, decision: QueueDecision) => void;
+  onRemoveDiscount: (id: string) => void;
 }) {
   const isReviewColumn = stage === "Needs Attention";
 
@@ -111,6 +148,7 @@ function PipelineColumn({
             const current = statusToPipelineStage(item.status);
             const highRisk = isHighRiskReturn(item);
             const selected = getDecision(item.id);
+            const discounted = isDiscounted(item);
 
             return (
               <li
@@ -146,13 +184,30 @@ function PipelineColumn({
                   </span>
                 </div>
 
+                {discounted ? (
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-bottle">
+                    {item.discountPercent}% off · ${item.originalPrice} → $
+                    {item.price}
+                  </p>
+                ) : null}
+
                 {stage === "Shipped" && item.shippedTo ? (
                   <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/55">
                     Shipped to {item.shippedTo}
                   </p>
                 ) : null}
 
-                {isReviewColumn ? (
+                {discounted ? (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveDiscount(item.id)}
+                    className="mt-3 w-full border border-ink/25 px-2 py-1.5 font-sans text-[10px] font-medium uppercase tracking-[0.14em] text-ink/70 transition-opacity hover:border-ink hover:text-ink"
+                  >
+                    Remove Discount
+                  </button>
+                ) : null}
+
+                {isReviewColumn && !discounted ? (
                   <div className="mt-3 flex flex-col gap-1.5">
                     {QUEUE_DECISIONS.map((label) => {
                       const isSelected = selected === label;
@@ -172,7 +227,9 @@ function PipelineColumn({
                       );
                     })}
                   </div>
-                ) : (
+                ) : null}
+
+                {!isReviewColumn && !discounted ? (
                   <label className="mt-3 block">
                     <span className="sr-only">Move {item.id} to stage</span>
                     <select
@@ -189,7 +246,26 @@ function PipelineColumn({
                       ))}
                     </select>
                   </label>
-                )}
+                ) : null}
+
+                {!isReviewColumn && discounted ? (
+                  <label className="mt-2 block">
+                    <span className="sr-only">Move {item.id} to stage</span>
+                    <select
+                      value={current ?? stage}
+                      onChange={(e) =>
+                        onMove(item.id, e.target.value as PipelineStage)
+                      }
+                      className="w-full border border-ink/15 bg-paper px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-ink/70 outline-none focus:border-ink"
+                    >
+                      {PIPELINE_STAGES.map((option) => (
+                        <option key={option} value={option}>
+                          Move to {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
               </li>
             );
           })

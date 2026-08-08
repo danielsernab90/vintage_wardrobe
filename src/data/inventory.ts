@@ -37,6 +37,10 @@ export type InventoryItem = Garment & {
   /** Present when status is In Rotation / pipeline stage Shipped. */
   shippedTo?: string;
   incidents: IncidentEntry[];
+  /** Base price before an active discount — never overwrite while discount is on. */
+  originalPrice?: number;
+  /** Percent applied when originalPrice is set. */
+  discountPercent?: number;
 };
 
 export type IncidentEntry = {
@@ -210,7 +214,7 @@ export function highRiskReason(item: InventoryItem) {
 
 /**
  * Resolve inventory Status column from base status + optional return decision.
- * Awaiting review → Needs Attention. Decision overlays apply after leaving.
+ * Active price discount → Discounted — In Rotation regardless of pipeline stage.
  */
 export function resolveDisplayStatus(
   item: InventoryItem,
@@ -219,10 +223,23 @@ export function resolveDisplayStatus(
   if (item.status === "Needs Attention") return "Needs Attention";
   if (item.status === "Retired" || decision === "Retire") return "Retired";
 
+  if (item.originalPrice != null || decision === "Discount") {
+    return "Discounted — In Rotation";
+  }
   if (decision === "Repair") return "In Repair";
-  if (decision === "Discount") return "Discounted — In Rotation";
 
   return item.status;
+}
+
+export function isDiscounted(item: Pick<InventoryItem, "originalPrice">) {
+  return item.originalPrice != null;
+}
+
+export function discountedPriceFromPercent(
+  originalPrice: number,
+  percent: number,
+) {
+  return Math.max(0, Math.round(originalPrice * (1 - percent / 100)));
 }
 
 /**

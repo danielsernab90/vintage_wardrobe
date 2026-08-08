@@ -1,7 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { AccountMenu } from "./AccountMenu";
 import { CartButton } from "./CartButton";
 import { CartDrawer } from "./CartDrawer";
+import { SearchModal } from "./SearchModal";
 
 const links = [
   { href: "/", label: "Home" },
@@ -20,6 +24,8 @@ function SearchIcon() {
 }
 
 export function SiteNav() {
+  const [searchOpen, setSearchOpen] = useState(false);
+
   return (
     <>
       <header className="sticky top-0 z-50 bg-paper">
@@ -41,7 +47,13 @@ export function SiteNav() {
           </ul>
 
           <div className="flex shrink-0 items-center gap-3 text-ink sm:gap-4 md:gap-5">
-            <button type="button" className="p-0.5 transition-opacity hover:opacity-60" aria-label="Search">
+            <button
+              type="button"
+              className="p-0.5 transition-opacity hover:opacity-60"
+              aria-label="Search"
+              aria-expanded={searchOpen}
+              onClick={() => setSearchOpen(true)}
+            >
               <SearchIcon />
             </button>
             <AccountMenu />
@@ -51,6 +63,7 @@ export function SiteNav() {
         <div className="h-px w-full bg-brass" aria-hidden="true" />
       </header>
       <CartDrawer />
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }

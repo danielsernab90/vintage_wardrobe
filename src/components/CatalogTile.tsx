@@ -1,13 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import type { Garment } from "@/data/garments";
+import { CyclePrice } from "@/components/CyclePrice";
+import type { InventoryItem } from "@/data/inventory";
 import { ConditionGradeTag } from "./ConditionGradeTag";
 import { GarmentImage } from "./GarmentImage";
 import { AddToRotationButton } from "./AddToRotationButton";
 
 type Props = {
-  garment: Garment;
+  garment: {
+    id: string;
+    name: string;
+    era: string;
+    fabric: string;
+    grade: InventoryItem["grade"];
+    price: number;
+    image: string;
+    originalPrice?: number;
+  };
   priority?: boolean;
 };
 
@@ -40,12 +50,12 @@ export function CatalogTile({ garment, priority = false }: Props) {
           <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-ink/65">
             {garment.era} · {garment.fabric}
           </p>
-          <p className="mt-3 font-display text-xl text-bottle">
-            ${garment.price}
-            <span className="ml-1 font-sans text-[10px] tracking-normal text-ink/45">
-              /cycle
-            </span>
-          </p>
+          <div className="mt-3">
+            <CyclePrice
+              price={garment.price}
+              originalPrice={garment.originalPrice}
+            />
+          </div>
         </Link>
         <div className="mt-4">
           <AddToRotationButton garmentId={garment.id} />
