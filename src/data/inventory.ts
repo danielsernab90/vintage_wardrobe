@@ -1,4 +1,5 @@
 import { garments, type Garment } from "./garments";
+import { activeRentals, mockMember } from "./closet";
 
 export type InventoryStatus =
   | "In Rotation"
@@ -13,6 +14,8 @@ export type InventoryItem = Garment & {
   status: InventoryStatus;
   costPerCycle: number;
   margin: number;
+  /** Present when status is In Rotation / pipeline stage Shipped. */
+  shippedTo?: string;
 };
 
 /**
@@ -21,6 +24,9 @@ export type InventoryItem = Garment & {
  * Cleaning → Cleaning
  * Ready → Ready
  * In Rotation → Shipped
+ *
+ * James Whitaker's My Closet active rentals are forced to In Rotation
+ * and labeled "Shipped to James Whitaker" in the pipeline.
  */
 const statusById: Record<string, InventoryStatus> = {
   "SPEC-014": "In Rotation",
@@ -28,10 +34,12 @@ const statusById: Record<string, InventoryStatus> = {
   "SPEC-033": "In Rotation",
   "SPEC-042": "Ready",
   "SPEC-058": "Cleaning",
-  "SPEC-067": "Returned",
+  "SPEC-067": "In Rotation",
   "SPEC-071": "Retired",
   "SPEC-089": "Ready",
 };
+
+const whitakerActiveIds = new Set(activeRentals.map((r) => r.garment.id));
 
 /** Mock cost/cycle reflecting cleaning + wear/write-off risk. */
 const costById: Record<string, number> = {
@@ -70,11 +78,17 @@ export function statusToPipelineStage(status: InventoryStatus): PipelineStage {
 
 export const inventory: InventoryItem[] = garments.map((garment) => {
   const costPerCycle = costById[garment.id] ?? 0;
+  const isWhitakerActive = whitakerActiveIds.has(garment.id);
+  const status = isWhitakerActive
+    ? "In Rotation"
+    : (statusById[garment.id] ?? "Cleaning");
+
   return {
     ...garment,
-    status: statusById[garment.id] ?? "Cleaning",
+    status,
     costPerCycle,
     margin: garment.price - costPerCycle,
+    shippedTo: isWhitakerActive ? mockMember.name : undefined,
   };
 });
 

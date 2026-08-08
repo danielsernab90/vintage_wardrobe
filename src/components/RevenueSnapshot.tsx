@@ -72,7 +72,7 @@ function RevenueDetailModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center px-5" role="presentation">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center px-4 py-6 sm:items-center sm:px-5" role="presentation">
       <button
         type="button"
         className="absolute inset-0 bg-ink/30"
@@ -83,7 +83,7 @@ function RevenueDetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-10 w-full max-w-md border border-brass bg-paper px-6 py-6 shadow-[0_8px_28px_rgba(28,26,23,0.12)]"
+        className="relative z-10 max-h-[85vh] w-full max-w-md overflow-y-auto border border-brass bg-paper px-5 py-5 shadow-[0_8px_28px_rgba(28,26,23,0.12)] sm:px-6 sm:py-6"
       >
         <div className="flex items-start justify-between gap-4">
           <div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ScrollHint } from "@/components/ScrollHint";
 import {
   subscribers,
   type Subscriber,
@@ -125,7 +126,32 @@ export function SubscriberRoster() {
         </p>
       </div>
 
-      <div className="overflow-x-auto px-5 py-4 md:px-6">
+      {/* Mobile cards */}
+      <ul className="space-y-0 divide-y divide-parchment px-5 py-2 md:hidden">
+        {rows.map((sub) => (
+          <li key={sub.id} className="py-4">
+            <p className="font-display text-lg text-ink">{sub.name}</p>
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink/55">
+              {sub.tier} · Joined {formatJoinDate(sub.joinDate)}
+            </p>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="font-mono text-[11px] text-ink/65">
+                {sub.itemsOut} items out
+              </span>
+              <span
+                className={`font-mono text-[10px] uppercase tracking-[0.16em] ${
+                  sub.status === "Active" ? "text-bottle" : "text-ink/45"
+                }`}
+              >
+                {sub.status}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {/* Tablet/desktop table */}
+      <ScrollHint className="hidden px-5 py-4 md:block md:px-6">
         <table className="w-full min-w-[44rem] border-collapse text-left">
           <thead>
             <tr className="border-b border-parchment">
@@ -162,7 +188,7 @@ export function SubscriberRoster() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollHint>
     </section>
   );
 }

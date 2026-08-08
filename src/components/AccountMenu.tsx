@@ -85,7 +85,7 @@ export function AccountMenu() {
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 top-full z-50 mt-3 min-w-[13.5rem] border border-brass bg-paper"
+          className="absolute right-0 top-full z-50 mt-3 min-w-[12rem] max-w-[calc(100vw-2rem)] border border-brass bg-paper"
         >
           {role === null ? (
             showSignInOptions ? (

@@ -24,15 +24,15 @@ export function SiteNav() {
     <>
       <header className="sticky top-0 z-50 bg-paper">
         <nav
-          className="flex items-center justify-between px-5 py-4 md:px-8 md:py-5"
+          className="flex items-start justify-between gap-3 px-4 py-3 sm:items-center sm:px-5 sm:py-4 md:px-8 md:py-5"
           aria-label="Primary"
         >
-          <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 md:gap-x-8">
+          <ul className="flex max-w-[70%] flex-wrap items-center gap-x-3 gap-y-2 sm:max-w-none sm:gap-x-5 md:gap-x-8">
             {links.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="font-sans text-[11px] font-medium uppercase tracking-[0.22em] text-ink transition-opacity hover:opacity-60"
+                  className="font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-ink transition-opacity hover:opacity-60 sm:text-[11px] sm:tracking-[0.22em]"
                 >
                   {link.label}
                 </Link>
@@ -40,7 +40,7 @@ export function SiteNav() {
             ))}
           </ul>
 
-          <div className="flex items-center gap-4 text-ink md:gap-5">
+          <div className="flex shrink-0 items-center gap-3 text-ink sm:gap-4 md:gap-5">
             <button type="button" className="p-0.5 transition-opacity hover:opacity-60" aria-label="Search">
               <SearchIcon />
             </button>

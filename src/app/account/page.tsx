@@ -118,51 +118,74 @@ export default function AccountPage() {
             Past pieces returned to the archive.
           </p>
 
-          <div className="mt-8 w-full overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-left">
-              <thead>
-                <tr className="border-b border-parchment">
-                  <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/50">
-                    Item
-                  </th>
-                  <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/50">
-                    Era
-                  </th>
-                  <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/50">
-                    Worn
-                  </th>
-                  <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/50">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rentalHistory.map((entry) => (
-                  <tr
-                    key={`${entry.garment.id}-${entry.wornFrom}`}
-                    className="border-b border-parchment/70"
+          <div className="mt-8 w-full">
+            {/* Mobile stacked history */}
+            <ul className="divide-y divide-parchment md:hidden">
+              {rentalHistory.map((entry) => (
+                <li key={`${entry.garment.id}-${entry.wornFrom}`} className="py-4">
+                  <Link
+                    href={`/item/${entry.garment.id}`}
+                    className="font-display text-lg text-ink transition-opacity hover:opacity-70"
                   >
-                    <td className="py-4 pr-4 font-display text-base text-ink md:text-lg">
-                      <Link
-                        href={`/item/${entry.garment.id}`}
-                        className="transition-opacity hover:opacity-70"
-                      >
-                        {entry.garment.name}
-                      </Link>
-                    </td>
-                    <td className="py-4 pr-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink/65">
-                      {entry.garment.era}
-                    </td>
-                    <td className="py-4 pr-4 font-mono text-[11px] uppercase tracking-[0.12em] text-ink/65">
-                      {entry.wornFrom} – {entry.wornTo}
-                    </td>
-                    <td className="py-4 font-mono text-[10px] uppercase tracking-[0.16em] text-ink/50">
-                      {entry.status}
-                    </td>
+                    {entry.garment.name}
+                  </Link>
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/55">
+                    {entry.garment.era} · {entry.wornFrom} – {entry.wornTo}
+                  </p>
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-ink/45">
+                    {entry.status}
+                  </p>
+                </li>
+              ))}
+            </ul>
+
+            {/* Desktop/tablet table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[36rem] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-parchment">
+                    <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/50">
+                      Item
+                    </th>
+                    <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/50">
+                      Era
+                    </th>
+                    <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/50">
+                      Worn
+                    </th>
+                    <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/50">
+                      Status
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rentalHistory.map((entry) => (
+                    <tr
+                      key={`${entry.garment.id}-${entry.wornFrom}`}
+                      className="border-b border-parchment/70"
+                    >
+                      <td className="py-4 pr-4 font-display text-base text-ink md:text-lg">
+                        <Link
+                          href={`/item/${entry.garment.id}`}
+                          className="transition-opacity hover:opacity-70"
+                        >
+                          {entry.garment.name}
+                        </Link>
+                      </td>
+                      <td className="py-4 pr-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink/65">
+                        {entry.garment.era}
+                      </td>
+                      <td className="py-4 pr-4 font-mono text-[11px] uppercase tracking-[0.12em] text-ink/65">
+                        {entry.wornFrom} – {entry.wornTo}
+                      </td>
+                      <td className="py-4 font-mono text-[10px] uppercase tracking-[0.16em] text-ink/50">
+                        {entry.status}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 

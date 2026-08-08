@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { DecisionQueue } from "@/components/DecisionQueue";
 import { RevenueSnapshot } from "@/components/RevenueSnapshot";
+import { ScrollHint } from "@/components/ScrollHint";
 import { SourcingAlerts } from "@/components/SourcingAlerts";
 import { SubscriberRoster } from "@/components/SubscriberRoster";
 import { TurnaroundPipeline } from "@/components/TurnaroundPipeline";
@@ -198,7 +199,60 @@ export function InventoryDashboard() {
           </div>
         </div>
 
-        <div className="mt-10 overflow-x-auto">
+        {/* Mobile: stacked inventory cards */}
+        <ul className="mt-8 space-y-3 md:hidden">
+          {rows.map((item) => (
+            <li key={item.id} className="border border-parchment px-4 py-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
+                {item.id}
+              </p>
+              <Link
+                href={`/item/${item.id}`}
+                className="mt-1 block font-display text-lg text-ink"
+              >
+                {item.name}
+              </Link>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <ConditionGradeTag grade={item.grade} />
+                <span className={`font-mono text-[10px] uppercase tracking-[0.14em] ${statusTone(item.status)}`}>
+                  {item.status}
+                </span>
+                <span className="font-mono text-[11px] text-ink/60">
+                  {item.cycles} cycles
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 border-t border-parchment pt-3">
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink/40">
+                    Price
+                  </p>
+                  <p className="mt-1 font-mono text-sm text-ink">${item.price}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink/40">
+                    Cost
+                  </p>
+                  <p className="mt-1 font-mono text-sm text-ink/70">${item.costPerCycle}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink/40">
+                    Margin
+                  </p>
+                  <p
+                    className={`mt-1 font-mono text-sm ${
+                      isThinMargin(item.margin) ? "text-oxblood" : "text-bottle"
+                    }`}
+                  >
+                    ${item.margin}
+                  </p>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        {/* Tablet/desktop: scrollable table with hint */}
+        <ScrollHint className="mt-10 hidden md:block">
           <table className="w-full min-w-[64rem] border-collapse text-left">
             <thead>
               <tr className="border-b border-parchment">
@@ -252,7 +306,7 @@ export function InventoryDashboard() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollHint>
 
         <DecisionQueue />
         <TurnaroundPipeline />

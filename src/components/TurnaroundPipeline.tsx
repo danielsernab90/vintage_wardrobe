@@ -24,7 +24,7 @@ export function TurnaroundPipeline() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4">
         {PIPELINE_STAGES.map((stage, index) => (
           <PipelineColumn
             key={stage}
@@ -77,6 +77,11 @@ function PipelineColumn({
             <div className="mt-2">
               <ConditionGradeTag grade={item.grade} />
             </div>
+            {stage === "Shipped" && item.shippedTo ? (
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/55">
+                Shipped to {item.shippedTo}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>
