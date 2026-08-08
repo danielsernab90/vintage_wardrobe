@@ -10,9 +10,12 @@ import {
 } from "react";
 import type { ConditionGrade, Garment } from "@/data/garments";
 import {
+  createSpecimenImage,
   discountedPriceFromPercent,
+  getPrimaryImageSrc,
   inventory as seedInventory,
   statusToPipelineStage,
+  withSyncedPrimaryImage,
   type InventoryItem,
   type InventoryStatus,
   type PipelineStage,
@@ -45,6 +48,9 @@ type InventoryContextValue = {
     options?: { discountPercent?: number },
   ) => void;
   removeDiscount: (id: string) => void;
+  addItemImage: (id: string, src: string) => void;
+  removeItemImage: (id: string, imageId: string) => void;
+  setPrimaryImage: (id: string, imageId: string) => void;
 };
 
 const InventoryContext = createContext<InventoryContextValue | null>(null);
@@ -103,9 +109,37 @@ function todayIncidentDate() {
   return `${now.getMonth() + 1}/${now.getDate()}`;
 }
 
+function syncPrimaryPhoto(
+  item: InventoryItem,
+  nextSrc: string,
+): Pick<InventoryItem, "images" | "primaryImageId" | "image"> {
+  const primaryIndex = item.images.findIndex(
+    (img) => img.id === item.primaryImageId,
+  );
+  if (primaryIndex >= 0) {
+    const images = item.images.map((img, index) =>
+      index === primaryIndex ? { ...img, src: nextSrc } : img,
+    );
+    return {
+      images,
+      primaryImageId: item.primaryImageId,
+      image: nextSrc,
+    };
+  }
+  const created = createSpecimenImage(nextSrc, item.id, item.images.length);
+  return {
+    images: [...item.images, created],
+    primaryImageId: created.id,
+    image: nextSrc,
+  };
+}
+
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<InventoryItem[]>(() =>
-    seedInventory.map((item) => ({ ...item })),
+    seedInventory.map((item) => ({
+      ...item,
+      images: item.images.map((img) => ({ ...img })),
+    })),
   );
 
   const getById = useCallback(
@@ -123,6 +157,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     setItems((prev) => {
       if (prev.some((item) => item.id === id)) return prev;
       const garment = toGarmentFields({ ...values, id });
+      const primary = createSpecimenImage(values.image, id, 0);
       const next: InventoryItem = {
         ...garment,
         cycles: 0,
@@ -130,6 +165,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         costPerCycle: values.costPerCycle,
         margin: values.price - values.costPerCycle,
         incidents: [],
+        images: [primary],
+        primaryImageId: primary.id,
+        image: primary.src,
       };
       return [...prev, next];
     });
@@ -140,9 +178,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       setItems((prev) =>
         prev.map((item) => {
           if (item.id !== id) return item;
+          const photo = syncPrimaryPhoto(item, values.image);
 
-          // Form always submits base price. If a discount is active, keep the
-          // percent, store the new base as originalPrice, and recompute display price.
           if (item.originalPrice != null && item.discountPercent != null) {
             const base = values.price;
             const discounted = discountedPriceFromPercent(
@@ -151,13 +188,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             );
             return {
               ...item,
+              ...photo,
               name: values.name.trim(),
               era: values.era.trim(),
               fabric: values.fabric.trim(),
               category: values.category,
               size: values.size,
               grade: values.grade,
-              image: values.image,
               costPerCycle: values.costPerCycle,
               originalPrice: base,
               price: discounted,
@@ -167,6 +204,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
           return {
             ...item,
+            ...photo,
             name: values.name.trim(),
             era: values.era.trim(),
             fabric: values.fabric.trim(),
@@ -174,7 +212,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             size: values.size,
             grade: values.grade,
             price: values.price,
-            image: values.image,
             costPerCycle: values.costPerCycle,
             margin: values.price - values.costPerCycle,
           };
@@ -289,6 +326,42 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const addItemImage = useCallback((id: string, src: string) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const created = createSpecimenImage(src, id, item.images.length);
+        return { ...item, images: [...item.images, created] };
+      }),
+    );
+  }, []);
+
+  const removeItemImage = useCallback((id: string, imageId: string) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        if (item.images.length <= 1) return item;
+        if (imageId === item.primaryImageId) return item;
+
+        const images = item.images.filter((img) => img.id !== imageId);
+        return withSyncedPrimaryImage({ ...item, images });
+      }),
+    );
+  }, []);
+
+  const setPrimaryImage = useCallback((id: string, imageId: string) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        if (!item.images.some((img) => img.id === imageId)) return item;
+        return withSyncedPrimaryImage({
+          ...item,
+          primaryImageId: imageId,
+        });
+      }),
+    );
+  }, []);
+
   const value = useMemo(
     () => ({
       items,
@@ -299,6 +372,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       setPipelineStage,
       applyReturnDecision,
       removeDiscount,
+      addItemImage,
+      removeItemImage,
+      setPrimaryImage,
     }),
     [
       items,
@@ -309,6 +385,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       setPipelineStage,
       applyReturnDecision,
       removeDiscount,
+      addItemImage,
+      removeItemImage,
+      setPrimaryImage,
     ],
   );
 
@@ -326,3 +405,6 @@ export function useInventory() {
   }
   return ctx;
 }
+
+/** Re-export for callers that need primary src helpers. */
+export { getPrimaryImageSrc };

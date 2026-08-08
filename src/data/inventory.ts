@@ -30,6 +30,11 @@ export type PipelineStage =
   | "Ready"
   | "Shipped";
 
+export type SpecimenImage = {
+  id: string;
+  src: string;
+};
+
 export type InventoryItem = Garment & {
   status: InventoryStatus;
   costPerCycle: number;
@@ -41,6 +46,9 @@ export type InventoryItem = Garment & {
   originalPrice?: number;
   /** Percent applied when originalPrice is set. */
   discountPercent?: number;
+  /** All attached photos (at least one). `image` mirrors the primary src. */
+  images: SpecimenImage[];
+  primaryImageId: string;
 };
 
 export type IncidentEntry = {
@@ -48,6 +56,22 @@ export type IncidentEntry = {
   note: string;
   flagged?: boolean;
 };
+
+export function createSpecimenImage(src: string, itemId: string, index = 0): SpecimenImage {
+  return {
+    id: `${itemId}-img-${index}-${Math.random().toString(36).slice(2, 7)}`,
+    src,
+  };
+}
+
+export function getPrimaryImageSrc(item: InventoryItem): string {
+  const primary = item.images.find((img) => img.id === item.primaryImageId);
+  return primary?.src ?? item.images[0]?.src ?? item.image;
+}
+
+export function withSyncedPrimaryImage(item: InventoryItem): InventoryItem {
+  return { ...item, image: getPrimaryImageSrc(item) };
+}
 
 /**
  * Status assignment is consistent with turnaround pipeline:
@@ -148,6 +172,7 @@ export const inventory: InventoryItem[] = garments.map((garment) => {
   const status = isWhitakerActive
     ? "In Rotation"
     : (statusById[garment.id] ?? "Cleaning");
+  const primaryId = `${garment.id}-img-0`;
 
   return {
     ...garment,
@@ -156,6 +181,8 @@ export const inventory: InventoryItem[] = garments.map((garment) => {
     margin: garment.price - costPerCycle,
     shippedTo: isWhitakerActive ? mockMember.name : undefined,
     incidents: incidentsById[garment.id] ?? [],
+    images: [{ id: primaryId, src: garment.image }],
+    primaryImageId: primaryId,
   };
 });
 

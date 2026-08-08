@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { ActivityLog } from "@/components/ActivityLog";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { CyclePrice } from "@/components/CyclePrice";
+import { ImageManagementModal } from "@/components/ImageManagementModal";
 import { IncidentLogModal } from "@/components/IncidentLogModal";
 import { InventoryItemModal } from "@/components/InventoryItemModal";
 import { RevenueSnapshot } from "@/components/RevenueSnapshot";
@@ -155,6 +155,7 @@ export function InventoryDashboard() {
   const [sortKey, setSortKey] = useState<SortKey>("id");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [logItemId, setLogItemId] = useState<string | null>(null);
+  const [imagesItemId, setImagesItemId] = useState<string | null>(null);
   const [editor, setEditor] = useState<
     null | { mode: "add" } | { mode: "edit"; id: string }
   >(null);
@@ -168,6 +169,7 @@ export function InventoryDashboard() {
   }, [items, getDecision, sortKey, sortDir]);
 
   const logItem = rows.find((item) => item.id === logItemId) ?? null;
+  const imagesItem = rows.find((item) => item.id === imagesItemId) ?? null;
   const editItem =
     editor?.mode === "edit" ? getById(editor.id) : undefined;
 
@@ -285,12 +287,13 @@ export function InventoryDashboard() {
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
                     {item.id}
                   </p>
-                  <Link
-                    href={`/item/${item.id}`}
-                    className="mt-1 block font-display text-lg text-ink"
+                  <button
+                    type="button"
+                    onClick={() => setImagesItemId(item.id)}
+                    className="mt-1 block text-left font-display text-lg text-ink transition-opacity hover:opacity-70"
                   >
                     {item.name}
-                  </Link>
+                  </button>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <EditButton item={item} />
@@ -370,12 +373,13 @@ export function InventoryDashboard() {
                     {item.id}
                   </td>
                   <td className="py-3.5 pr-4">
-                    <Link
-                      href={`/item/${item.id}`}
-                      className="font-sans text-sm text-ink transition-opacity hover:opacity-70"
+                    <button
+                      type="button"
+                      onClick={() => setImagesItemId(item.id)}
+                      className="text-left font-sans text-sm text-ink transition-opacity hover:opacity-70"
                     >
                       {item.name}
-                    </Link>
+                    </button>
                   </td>
                   <td className="py-3.5 pr-4">
                     <ConditionGradeTag grade={item.grade} />
@@ -417,6 +421,13 @@ export function InventoryDashboard() {
 
         {logItem ? (
           <IncidentLogModal item={logItem} onClose={() => setLogItemId(null)} />
+        ) : null}
+
+        {imagesItem ? (
+          <ImageManagementModal
+            item={imagesItem}
+            onClose={() => setImagesItemId(null)}
+          />
         ) : null}
 
         {editor?.mode === "add" ? (

@@ -10,6 +10,7 @@ import {
 } from "@/context/InventoryContext";
 import {
   discountedPriceFromPercent,
+  getPrimaryImageSrc,
   isDiscounted,
   type InventoryItem,
 } from "@/data/inventory";
@@ -49,7 +50,7 @@ function itemToForm(item: InventoryItem): FormState {
     grade: item.grade,
     price: String(basePrice),
     costPerCycle: String(item.costPerCycle),
-    image: item.image,
+    image: getPrimaryImageSrc(item),
   };
 }
 

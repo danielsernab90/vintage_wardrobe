@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { DiscountModal } from "@/components/DiscountModal";
+import { ImageManagementModal } from "@/components/ImageManagementModal";
 import {
   QUEUE_DECISIONS,
   useDecisions,
@@ -29,6 +29,10 @@ export function TurnaroundPipeline() {
   const [discountTarget, setDiscountTarget] = useState<InventoryItem | null>(
     null,
   );
+  const [imagesItemId, setImagesItemId] = useState<string | null>(null);
+  const imagesItem = imagesItemId
+    ? (items.find((item) => item.id === imagesItemId) ?? null)
+    : null;
 
   function handleMove(id: string, stage: PipelineStage) {
     if (stage === "Needs Attention") {
@@ -86,6 +90,7 @@ export function TurnaroundPipeline() {
             onMove={handleMove}
             onDecision={handleDecision}
             onRemoveDiscount={handleRemoveDiscount}
+            onOpenImages={setImagesItemId}
           />
         ))}
       </div>
@@ -96,6 +101,13 @@ export function TurnaroundPipeline() {
           currentPrice={discountTarget.originalPrice ?? discountTarget.price}
           onClose={() => setDiscountTarget(null)}
           onConfirm={handleDiscountConfirm}
+        />
+      ) : null}
+
+      {imagesItem ? (
+        <ImageManagementModal
+          item={imagesItem}
+          onClose={() => setImagesItemId(null)}
         />
       ) : null}
     </section>
@@ -110,6 +122,7 @@ function PipelineColumn({
   onMove,
   onDecision,
   onRemoveDiscount,
+  onOpenImages,
 }: {
   stage: PipelineStage;
   items: InventoryItem[];
@@ -118,6 +131,7 @@ function PipelineColumn({
   onMove: (id: string, stage: PipelineStage) => void;
   onDecision: (item: InventoryItem, decision: QueueDecision) => void;
   onRemoveDiscount: (id: string) => void;
+  onOpenImages: (id: string) => void;
 }) {
   const isReviewColumn = stage === "Needs Attention";
 
@@ -171,12 +185,13 @@ function PipelineColumn({
                       ? " · Routine return"
                       : ""}
                 </p>
-                <Link
-                  href={`/item/${item.id}`}
-                  className="mt-1 block font-sans text-sm leading-snug text-ink transition-opacity hover:opacity-70"
+                <button
+                  type="button"
+                  onClick={() => onOpenImages(item.id)}
+                  className="mt-1 block text-left font-sans text-sm leading-snug text-ink transition-opacity hover:opacity-70"
                 >
                   {item.name}
-                </Link>
+                </button>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <ConditionGradeTag grade={item.grade} />
                   <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink/50">
