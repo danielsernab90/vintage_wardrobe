@@ -140,6 +140,31 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       setItems((prev) =>
         prev.map((item) => {
           if (item.id !== id) return item;
+
+          // Form always submits base price. If a discount is active, keep the
+          // percent, store the new base as originalPrice, and recompute display price.
+          if (item.originalPrice != null && item.discountPercent != null) {
+            const base = values.price;
+            const discounted = discountedPriceFromPercent(
+              base,
+              item.discountPercent,
+            );
+            return {
+              ...item,
+              name: values.name.trim(),
+              era: values.era.trim(),
+              fabric: values.fabric.trim(),
+              category: values.category,
+              size: values.size,
+              grade: values.grade,
+              image: values.image,
+              costPerCycle: values.costPerCycle,
+              originalPrice: base,
+              price: discounted,
+              margin: discounted - values.costPerCycle,
+            };
+          }
+
           return {
             ...item,
             name: values.name.trim(),

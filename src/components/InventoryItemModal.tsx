@@ -8,7 +8,11 @@ import {
   SIZE_OPTIONS,
   type InventoryFormValues,
 } from "@/context/InventoryContext";
-import type { InventoryItem } from "@/data/inventory";
+import {
+  discountedPriceFromPercent,
+  isDiscounted,
+  type InventoryItem,
+} from "@/data/inventory";
 
 type Props = {
   mode: "add" | "edit";
@@ -33,6 +37,8 @@ type FormState = {
 };
 
 function itemToForm(item: InventoryItem): FormState {
+  // Edit the base (pre-discount) price when a discount is active
+  const basePrice = item.originalPrice ?? item.price;
   return {
     id: item.id,
     name: item.name,
@@ -41,7 +47,7 @@ function itemToForm(item: InventoryItem): FormState {
     category: item.category,
     size: item.size,
     grade: item.grade,
-    price: String(item.price),
+    price: String(basePrice),
     costPerCycle: String(item.costPerCycle),
     image: item.image,
   };
@@ -88,10 +94,16 @@ export function InventoryItemModal({
 
   const priceNum = Number(form.price);
   const costNum = Number(form.costPerCycle);
+  const activeDiscount =
+    mode === "edit" && item && isDiscounted(item) ? item.discountPercent : undefined;
   const margin = useMemo(() => {
     if (!Number.isFinite(priceNum) || !Number.isFinite(costNum)) return null;
+    if (activeDiscount != null) {
+      const discounted = discountedPriceFromPercent(priceNum, activeDiscount);
+      return discounted - costNum;
+    }
     return priceNum - costNum;
-  }, [priceNum, costNum]);
+  }, [priceNum, costNum, activeDiscount]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -329,7 +341,9 @@ export function InventoryItemModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="inv-price" className={labelClass}>
-                Price per cycle
+                {activeDiscount != null
+                  ? "Base price per cycle"
+                  : "Price per cycle"}
               </label>
               <input
                 id="inv-price"
@@ -359,8 +373,27 @@ export function InventoryItemModal({
             </div>
           </div>
 
+          {activeDiscount != null ? (
+            <div className="border border-brass/40 bg-parchment/40 px-3 py-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-brass">
+                Active discount · {activeDiscount}%
+              </p>
+              <p className="mt-1.5 font-sans text-xs leading-relaxed text-ink/65">
+                You&apos;re editing the base price. The {activeDiscount}% discount
+                stays applied — displayed price becomes $
+                {Number.isFinite(priceNum)
+                  ? discountedPriceFromPercent(priceNum, activeDiscount)
+                  : "—"}
+                , and Remove Discount will revert to this base.
+              </p>
+            </div>
+          ) : null}
+
           <div className="border border-parchment bg-parchment/30 px-3 py-3">
-            <p className={labelClass}>Margin (auto)</p>
+            <p className={labelClass}>
+              Margin (auto)
+              {activeDiscount != null ? " · after discount" : ""}
+            </p>
             <p className="mt-1 font-display text-2xl text-ink">
               {margin === null ? "—" : `$${margin}`}
             </p>
