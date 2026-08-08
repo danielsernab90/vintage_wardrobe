@@ -1,7 +1,11 @@
+"use client";
+
+import { useInventory } from "@/context/InventoryContext";
 import { getSourcingAlerts } from "@/data/inventory";
 
 export function SourcingAlerts() {
-  const alerts = getSourcingAlerts();
+  const { items } = useInventory();
+  const alerts = getSourcingAlerts(items);
 
   return (
     <section className="mt-14 border border-oxblood/35 bg-paper md:mt-16">

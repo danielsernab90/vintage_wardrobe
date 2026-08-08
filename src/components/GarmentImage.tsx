@@ -11,9 +11,14 @@ type Props = {
   className?: string;
 };
 
+function isLocalObjectUrl(src: string) {
+  return src.startsWith("blob:") || src.startsWith("data:");
+}
+
 /**
  * next/image wrapper that falls back to the parent's neutral background
  * (no broken-image icon) if the asset fails to load.
+ * Session uploads use blob:/data: URLs via a plain <img>.
  */
 export function GarmentImage({
   src,
@@ -26,6 +31,18 @@ export function GarmentImage({
 
   if (failed) {
     return <div className="absolute inset-0 bg-parchment" aria-hidden="true" />;
+  }
+
+  if (isLocalObjectUrl(src)) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={alt}
+        className={`absolute inset-0 h-full w-full ${className}`}
+        onError={() => setFailed(true)}
+      />
+    );
   }
 
   return (

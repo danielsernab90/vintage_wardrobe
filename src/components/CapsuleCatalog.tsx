@@ -1,8 +1,12 @@
-import { garments } from "@/data/garments";
+"use client";
+
 import { CatalogTile } from "./CatalogTile";
 import { OrnamentDivider } from "./OrnamentDivider";
+import { useInventory } from "@/context/InventoryContext";
 
 export function CapsuleCatalog() {
+  const { items } = useInventory();
+
   return (
     <section id="catalog" className="bg-paper">
       <div className="flex flex-col items-center px-6 pb-8 pt-6 text-center md:pb-10 md:pt-8">
@@ -15,7 +19,7 @@ export function CapsuleCatalog() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {garments.map((garment, index) => (
+        {items.map((garment, index) => (
           <CatalogTile
             key={garment.id}
             garment={garment}

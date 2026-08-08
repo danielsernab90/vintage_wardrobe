@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ActivityLog } from "@/components/ActivityLog";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
-import { DecisionQueue } from "@/components/DecisionQueue";
 import { IncidentLogModal } from "@/components/IncidentLogModal";
+import { InventoryItemModal } from "@/components/InventoryItemModal";
 import { RevenueSnapshot } from "@/components/RevenueSnapshot";
 import { ScrollHint } from "@/components/ScrollHint";
 import { SourcingAlerts } from "@/components/SourcingAlerts";
@@ -13,8 +13,11 @@ import { SubscriberRoster } from "@/components/SubscriberRoster";
 import { TurnaroundPipeline } from "@/components/TurnaroundPipeline";
 import { useDecisions } from "@/context/DecisionContext";
 import {
+  useInventory,
+  type InventoryFormValues,
+} from "@/context/InventoryContext";
+import {
   getInventoryStats,
-  inventory,
   isThinMargin,
   resolveDisplayStatus,
   type DisplayStatus,
@@ -53,8 +56,7 @@ const statusRank: Record<DisplayStatus, number> = {
   Cleaning: 3,
   Ready: 4,
   "In Repair": 5,
-  Returned: 6,
-  Retired: 7,
+  Retired: 6,
 };
 
 function formatAverageMargin(value: number) {
@@ -140,29 +142,33 @@ function statusTone(status: DisplayStatus) {
       return "text-ink/70";
     case "In Repair":
       return "text-brass";
-    case "Returned":
-      return "text-ink/55";
     case "Retired":
       return "text-ink/45";
   }
 }
 
 export function InventoryDashboard() {
-  const stats = getInventoryStats();
+  const { items, getById, suggestNextId, addItem, updateItem } = useInventory();
+  const stats = getInventoryStats(items);
   const { getDecision } = useDecisions();
   const [sortKey, setSortKey] = useState<SortKey>("id");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [logItemId, setLogItemId] = useState<string | null>(null);
+  const [editor, setEditor] = useState<
+    null | { mode: "add" } | { mode: "edit"; id: string }
+  >(null);
 
   const rows = useMemo(() => {
-    const withStatus: InventoryRow[] = inventory.map((item) => ({
+    const withStatus: InventoryRow[] = items.map((item) => ({
       ...item,
       displayStatus: resolveDisplayStatus(item, getDecision(item.id)),
     }));
     return withStatus.sort((a, b) => compareItems(a, b, sortKey, sortDir));
-  }, [getDecision, sortKey, sortDir]);
+  }, [items, getDecision, sortKey, sortDir]);
 
   const logItem = rows.find((item) => item.id === logItemId) ?? null;
+  const editItem =
+    editor?.mode === "edit" ? getById(editor.id) : undefined;
 
   function handleSort(key: SortKey) {
     if (key === sortKey) {
@@ -171,6 +177,17 @@ export function InventoryDashboard() {
     }
     setSortKey(key);
     setSortDir("asc");
+  }
+
+  function handleFormSubmit(values: InventoryFormValues) {
+    if (editor?.mode === "add") {
+      addItem(values);
+    } else if (editor?.mode === "edit") {
+      const { id: _, ...rest } = values;
+      void _;
+      updateItem(editor.id, rest);
+    }
+    setEditor(null);
   }
 
   function LogButton({ item }: { item: InventoryItem }) {
@@ -186,6 +203,18 @@ export function InventoryDashboard() {
         {item.incidents.length > 0
           ? `Log (${item.incidents.length})`
           : "Log"}
+      </button>
+    );
+  }
+
+  function EditButton({ item }: { item: InventoryItem }) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditor({ mode: "edit", id: item.id })}
+        className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink/50 transition-opacity hover:opacity-70"
+      >
+        Edit
       </button>
     );
   }
@@ -212,17 +241,26 @@ export function InventoryDashboard() {
             Inventory Dashboard
           </h1>
           <p className="mt-2 max-w-2xl font-sans text-sm text-ink/65">
-            Read-only snapshot of the current capsule — condition, cycles, cost,
-            and margin across the archive.
+            Capsule inventory with session add/edit — condition, cycles, cost,
+            and margin. Changes clear on refresh until a backend is connected.
           </p>
         </header>
 
         <RevenueSnapshot />
 
         <div className="mt-8">
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink/45">
-            Inventory
-          </p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/45">
+              Inventory
+            </p>
+            <button
+              type="button"
+              onClick={() => setEditor({ mode: "add" })}
+              className="bg-ink px-4 py-2.5 font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-paper transition-opacity hover:opacity-80"
+            >
+              + Add Item
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-px bg-parchment md:grid-cols-5">
             {summary.map((stat) => (
               <div key={stat.label} className="bg-paper px-4 py-5 md:px-5">
@@ -253,7 +291,10 @@ export function InventoryDashboard() {
                     {item.name}
                   </Link>
                 </div>
-                <LogButton item={item} />
+                <div className="flex flex-col items-end gap-2">
+                  <EditButton item={item} />
+                  <LogButton item={item} />
+                </div>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <ConditionGradeTag grade={item.grade} />
@@ -296,7 +337,7 @@ export function InventoryDashboard() {
 
         {/* Tablet/desktop: scrollable table with hint */}
         <ScrollHint className="mt-10 hidden md:block">
-          <table className="w-full min-w-[70rem] border-collapse text-left">
+          <table className="w-full min-w-[76rem] border-collapse text-left">
             <thead>
               <tr className="border-b border-parchment">
                 <SortHeader label="Item ID" column="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
@@ -307,8 +348,11 @@ export function InventoryDashboard() {
                 <SortHeader label="Price/cycle" column="price" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="Cost/Cycle" column="cost" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="Margin" column="margin" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-                <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/55">
+                <th className="pb-3 pr-4 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/55">
                   Incidents
+                </th>
+                <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/55">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -348,8 +392,11 @@ export function InventoryDashboard() {
                   >
                     ${item.margin}
                   </td>
-                  <td className="py-3.5">
+                  <td className="py-3.5 pr-4">
                     <LogButton item={item} />
+                  </td>
+                  <td className="py-3.5">
+                    <EditButton item={item} />
                   </td>
                 </tr>
               ))}
@@ -361,7 +408,25 @@ export function InventoryDashboard() {
           <IncidentLogModal item={logItem} onClose={() => setLogItemId(null)} />
         ) : null}
 
-        <DecisionQueue />
+        {editor?.mode === "add" ? (
+          <InventoryItemModal
+            mode="add"
+            suggestedId={suggestNextId()}
+            isIdTaken={(id) => Boolean(getById(id))}
+            onClose={() => setEditor(null)}
+            onSubmit={handleFormSubmit}
+          />
+        ) : null}
+
+        {editor?.mode === "edit" && editItem ? (
+          <InventoryItemModal
+            mode="edit"
+            item={editItem}
+            onClose={() => setEditor(null)}
+            onSubmit={handleFormSubmit}
+          />
+        ) : null}
+
         <TurnaroundPipeline />
         <SubscriberRoster />
         <SourcingAlerts />

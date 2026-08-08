@@ -1,13 +1,39 @@
+"use client";
+
 import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import {
+  QUEUE_DECISIONS,
+  useDecisions,
+  type QueueDecision,
+} from "@/context/DecisionContext";
+import { useInventory } from "@/context/InventoryContext";
+import {
   getPipelineBoard,
+  highRiskReason,
+  isHighRiskReturn,
   PIPELINE_STAGES,
+  statusToPipelineStage,
+  type InventoryItem,
   type PipelineStage,
 } from "@/data/inventory";
 
 export function TurnaroundPipeline() {
-  const board = getPipelineBoard();
+  const { items, setPipelineStage, applyReturnDecision } = useInventory();
+  const { getDecision, setDecision, clearDecision } = useDecisions();
+  const board = getPipelineBoard(items);
+
+  function handleMove(id: string, stage: PipelineStage) {
+    if (stage === "Needs Attention") {
+      clearDecision(id);
+    }
+    setPipelineStage(id, stage);
+  }
+
+  function handleDecision(item: InventoryItem, decision: QueueDecision) {
+    setDecision(item.id, decision);
+    applyReturnDecision(item.id, decision);
+  }
 
   return (
     <section className="mt-14 border border-parchment md:mt-16">
@@ -19,8 +45,8 @@ export function TurnaroundPipeline() {
           Turnaround Pipeline
         </h2>
         <p className="mt-2 max-w-2xl font-sans text-sm text-ink/65">
-          Static snapshot of where each piece sits between return and next ship —
-          consistent with inventory status above.
+          Every return lands in Needs Attention for a manual decision, then
+          cleaning → ready → ship. Shipping adds one cycle.
         </p>
       </div>
 
@@ -31,6 +57,9 @@ export function TurnaroundPipeline() {
             stage={stage}
             items={board[stage]}
             showDivider={index < PIPELINE_STAGES.length - 1}
+            getDecision={getDecision}
+            onMove={handleMove}
+            onDecision={handleDecision}
           />
         ))}
       </div>
@@ -42,11 +71,19 @@ function PipelineColumn({
   stage,
   items,
   showDivider,
+  getDecision,
+  onMove,
+  onDecision,
 }: {
   stage: PipelineStage;
-  items: ReturnType<typeof getPipelineBoard>[PipelineStage];
+  items: InventoryItem[];
   showDivider: boolean;
+  getDecision: (id: string) => QueueDecision | undefined;
+  onMove: (id: string, stage: PipelineStage) => void;
+  onDecision: (item: InventoryItem, decision: QueueDecision) => void;
 }) {
+  const isReviewColumn = stage === "Needs Attention";
+
   return (
     <div
       className={`px-4 py-5 md:px-5 ${
@@ -54,7 +91,11 @@ function PipelineColumn({
       }`}
     >
       <div className="flex items-baseline justify-between gap-2 border-b border-parchment pb-3">
-        <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/55">
+        <h3
+          className={`font-mono text-[10px] font-medium uppercase tracking-[0.18em] ${
+            isReviewColumn ? "text-oxblood" : "text-ink/55"
+          }`}
+        >
           {stage}
         </h3>
         <span className="font-mono text-[10px] tabular-nums text-ink/40">
@@ -63,27 +104,96 @@ function PipelineColumn({
       </div>
 
       <ul className="mt-4 space-y-3">
-        {items.map((item) => (
-          <li key={item.id} className="border border-parchment/80 bg-paper p-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
-              {item.id}
-            </p>
-            <Link
-              href={`/item/${item.id}`}
-              className="mt-1 block font-sans text-sm leading-snug text-ink transition-opacity hover:opacity-70"
-            >
-              {item.name}
-            </Link>
-            <div className="mt-2">
-              <ConditionGradeTag grade={item.grade} />
-            </div>
-            {stage === "Shipped" && item.shippedTo ? (
-              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/55">
-                Shipped to {item.shippedTo}
-              </p>
-            ) : null}
-          </li>
-        ))}
+        {items.length === 0 ? (
+          <li className="font-sans text-xs text-ink/40">Empty</li>
+        ) : (
+          items.map((item) => {
+            const current = statusToPipelineStage(item.status);
+            const highRisk = isHighRiskReturn(item);
+            const selected = getDecision(item.id);
+
+            return (
+              <li
+                key={item.id}
+                className={`bg-paper p-3 ${
+                  isReviewColumn && highRisk
+                    ? "border border-oxblood/50"
+                    : "border border-parchment/80"
+                }`}
+              >
+                <p
+                  className={`font-mono text-[10px] uppercase tracking-[0.14em] ${
+                    isReviewColumn && highRisk ? "text-oxblood" : "text-ink/45"
+                  }`}
+                >
+                  {item.id}
+                  {isReviewColumn && highRisk
+                    ? ` · ${highRiskReason(item)}`
+                    : isReviewColumn
+                      ? " · Routine return"
+                      : ""}
+                </p>
+                <Link
+                  href={`/item/${item.id}`}
+                  className="mt-1 block font-sans text-sm leading-snug text-ink transition-opacity hover:opacity-70"
+                >
+                  {item.name}
+                </Link>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <ConditionGradeTag grade={item.grade} />
+                  <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink/50">
+                    {item.cycles} cycles
+                  </span>
+                </div>
+
+                {stage === "Shipped" && item.shippedTo ? (
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/55">
+                    Shipped to {item.shippedTo}
+                  </p>
+                ) : null}
+
+                {isReviewColumn ? (
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    {QUEUE_DECISIONS.map((label) => {
+                      const isSelected = selected === label;
+                      return (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => onDecision(item, label)}
+                          className={`px-2 py-1.5 text-left font-sans text-[10px] font-medium uppercase tracking-[0.14em] transition-opacity ${
+                            isSelected
+                              ? "bg-ink text-paper"
+                              : "border border-ink/20 bg-transparent text-ink/55 hover:border-ink hover:text-ink"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <label className="mt-3 block">
+                    <span className="sr-only">Move {item.id} to stage</span>
+                    <select
+                      value={current ?? stage}
+                      onChange={(e) =>
+                        onMove(item.id, e.target.value as PipelineStage)
+                      }
+                      className="w-full border border-ink/15 bg-paper px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-ink/70 outline-none focus:border-ink"
+                    >
+                      {PIPELINE_STAGES.map((option) => (
+                        <option key={option} value={option}>
+                          Move to {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </li>
+            );
+          })
+        )}
       </ul>
     </div>
   );

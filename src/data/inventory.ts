@@ -2,13 +2,13 @@ import { garments, type Garment } from "./garments";
 import { activeRentals, mockMember } from "./closet";
 
 export type InventoryStatus =
+  | "Needs Attention"
   | "In Rotation"
   | "Cleaning"
   | "Ready"
-  | "Returned"
   | "Retired";
 
-/** Session decision from the Decision Queue (manual only). */
+/** Session decision from return review (manual only). */
 export type QueueDecision =
   | "Keep As Is"
   | "Repair"
@@ -16,16 +16,19 @@ export type QueueDecision =
   | "Retire";
 
 /**
- * Status shown in the inventory table — base status overridden by
- * Decision Queue eligibility / manual choice.
+ * Status shown in the inventory table — base pipeline status with
+ * decision overlays (In Repair / Discounted — In Rotation).
  */
 export type DisplayStatus =
   | InventoryStatus
-  | "Needs Attention"
   | "In Repair"
   | "Discounted — In Rotation";
 
-export type PipelineStage = "Returned" | "Cleaning" | "Ready" | "Shipped";
+export type PipelineStage =
+  | "Needs Attention"
+  | "Cleaning"
+  | "Ready"
+  | "Shipped";
 
 export type InventoryItem = Garment & {
   status: InventoryStatus;
@@ -44,22 +47,25 @@ export type IncidentEntry = {
 
 /**
  * Status assignment is consistent with turnaround pipeline:
- * Returned/Retired → Returned column
- * Cleaning → Cleaning
- * Ready → Ready
- * In Rotation → Shipped
+ * Needs Attention → first column (every return awaits a decision)
+ * Cleaning / Ready / In Rotation (Shipped)
+ * Retired exits the pipeline entirely
  *
  * James Whitaker's My Closet active rentals are forced to In Rotation
  * and labeled "Shipped to James Whitaker" in the pipeline.
+ *
+ * Demo Needs Attention mix:
+ * - SPEC-071 high-risk (Grade C, 12 cycles)
+ * - SPEC-058 routine return (Grade A, 4 cycles)
  */
 const statusById: Record<string, InventoryStatus> = {
   "SPEC-014": "In Rotation",
   "SPEC-021": "Cleaning",
   "SPEC-033": "In Rotation",
   "SPEC-042": "Ready",
-  "SPEC-058": "Cleaning",
+  "SPEC-058": "Needs Attention",
   "SPEC-067": "In Rotation",
-  "SPEC-071": "Retired",
+  "SPEC-071": "Needs Attention",
   "SPEC-089": "Ready",
 };
 
@@ -108,23 +114,27 @@ const incidentsById: Record<string, IncidentEntry[]> = {
 export const THIN_MARGIN_THRESHOLD = 10;
 
 export const PIPELINE_STAGES: PipelineStage[] = [
-  "Returned",
+  "Needs Attention",
   "Cleaning",
   "Ready",
   "Shipped",
 ];
 
-export function statusToPipelineStage(status: InventoryStatus): PipelineStage {
+/** Map status → pipeline column. Retired items leave the board. */
+export function statusToPipelineStage(
+  status: InventoryStatus,
+): PipelineStage | null {
   switch (status) {
-    case "Returned":
-    case "Retired":
-      return "Returned";
+    case "Needs Attention":
+      return "Needs Attention";
     case "Cleaning":
       return "Cleaning";
     case "Ready":
       return "Ready";
     case "In Rotation":
       return "Shipped";
+    case "Retired":
+      return null;
   }
 }
 
@@ -166,7 +176,8 @@ export function getPipelineBoard(items: InventoryItem[] = inventory) {
   ) as Record<PipelineStage, InventoryItem[]>;
 
   for (const item of items) {
-    columns[statusToPipelineStage(item.status)].push(item);
+    const stage = statusToPipelineStage(item.status);
+    if (stage) columns[stage].push(item);
   }
 
   return columns;
@@ -182,17 +193,15 @@ function isGradeC(grade: string) {
   return grade === "C" || grade === "C+" || grade === "C-";
 }
 
-/** Grade C or 8+ cycles — automatically enters Needs Attention until decided. */
-export function isDecisionQueueCandidate(item: InventoryItem) {
+/**
+ * Stronger visual scrutiny inside Needs Attention —
+ * Grade C or 8+ cycles (routine returns are unflagged).
+ */
+export function isHighRiskReturn(item: InventoryItem) {
   return isGradeC(item.grade) || item.cycles >= HIGH_CYCLE_THRESHOLD;
 }
 
-/** Items needing write-off / repair review: Grade C or 8+ cycles. */
-export function getDecisionQueue(items: InventoryItem[] = inventory) {
-  return items.filter(isDecisionQueueCandidate);
-}
-
-export function decisionReason(item: InventoryItem) {
+export function highRiskReason(item: InventoryItem) {
   const reasons: string[] = [];
   if (isGradeC(item.grade)) reasons.push("Grade C");
   if (item.cycles >= HIGH_CYCLE_THRESHOLD) reasons.push(`${item.cycles} cycles`);
@@ -200,28 +209,20 @@ export function decisionReason(item: InventoryItem) {
 }
 
 /**
- * Resolve inventory Status column from base status + optional queue decision.
- * Undecided candidates → "Needs Attention". Decisions map to outcome statuses.
+ * Resolve inventory Status column from base status + optional return decision.
+ * Awaiting review → Needs Attention. Decision overlays apply after leaving.
  */
 export function resolveDisplayStatus(
   item: InventoryItem,
   decision?: QueueDecision,
 ): DisplayStatus {
-  if (!isDecisionQueueCandidate(item)) return item.status;
-  if (!decision) return "Needs Attention";
+  if (item.status === "Needs Attention") return "Needs Attention";
+  if (item.status === "Retired" || decision === "Retire") return "Retired";
 
-  switch (decision) {
-    case "Keep As Is":
-      // Explicit return to circulation — not "preserve prior status"
-      // (prior may have been Retired / Needs Attention placeholders).
-      return "In Rotation";
-    case "Repair":
-      return "In Repair";
-    case "Discount":
-      return "Discounted — In Rotation";
-    case "Retire":
-      return "Retired";
-  }
+  if (decision === "Repair") return "In Repair";
+  if (decision === "Discount") return "Discounted — In Rotation";
+
+  return item.status;
 }
 
 /**

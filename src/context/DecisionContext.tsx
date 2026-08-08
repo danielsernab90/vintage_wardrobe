@@ -23,6 +23,7 @@ type DecisionContextValue = {
   decisions: Record<string, QueueDecision>;
   getDecision: (itemId: string) => QueueDecision | undefined;
   setDecision: (itemId: string, decision: QueueDecision) => void;
+  clearDecision: (itemId: string) => void;
 };
 
 const DecisionContext = createContext<DecisionContextValue | null>(null);
@@ -41,9 +42,18 @@ export function DecisionProvider({ children }: { children: ReactNode }) {
     setDecisions((prev) => ({ ...prev, [itemId]: decision }));
   }, []);
 
+  const clearDecision = useCallback((itemId: string) => {
+    setDecisions((prev) => {
+      if (!(itemId in prev)) return prev;
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }, []);
+
   const value = useMemo(
-    () => ({ decisions, getDecision, setDecision }),
-    [decisions, getDecision, setDecision],
+    () => ({ decisions, getDecision, setDecision, clearDecision }),
+    [decisions, getDecision, setDecision, clearDecision],
   );
 
   return (

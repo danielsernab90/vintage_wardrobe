@@ -8,12 +8,18 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getGarmentById, type Garment } from "@/data/garments";
+import { useInventory } from "@/context/InventoryContext";
+import type { Garment } from "@/data/garments";
 
 export const MAX_ITEM_QTY = 3;
 
 export type CartLine = {
   garment: Garment;
+  quantity: number;
+};
+
+type CartLineState = {
+  garmentId: string;
   quantity: number;
 };
 
@@ -36,7 +42,8 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartLine[]>([]);
+  const { getById } = useInventory();
+  const [lines, setLines] = useState<CartLineState[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
 
@@ -54,51 +61,63 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addItem = useCallback((garmentId: string) => {
-    const garment = getGarmentById(garmentId);
-    if (!garment) return;
+  const addItem = useCallback(
+    (garmentId: string) => {
+      if (!getById(garmentId)) return;
 
-    setCheckoutComplete(false);
-    setItems((prev) => {
-      const existing = prev.find((line) => line.garment.id === garmentId);
-      if (existing) {
-        if (existing.quantity >= MAX_ITEM_QTY) return prev;
-        return prev.map((line) =>
-          line.garment.id === garmentId
-            ? { ...line, quantity: line.quantity + 1 }
-            : line,
-        );
-      }
-      return [...prev, { garment, quantity: 1 }];
-    });
-    setIsOpen(true);
-  }, []);
+      setCheckoutComplete(false);
+      setLines((prev) => {
+        const existing = prev.find((line) => line.garmentId === garmentId);
+        if (existing) {
+          if (existing.quantity >= MAX_ITEM_QTY) return prev;
+          return prev.map((line) =>
+            line.garmentId === garmentId
+              ? { ...line, quantity: line.quantity + 1 }
+              : line,
+          );
+        }
+        return [...prev, { garmentId, quantity: 1 }];
+      });
+      setIsOpen(true);
+    },
+    [getById],
+  );
 
   const removeItem = useCallback((garmentId: string) => {
-    setItems((prev) => prev.filter((line) => line.garment.id !== garmentId));
+    setLines((prev) => prev.filter((line) => line.garmentId !== garmentId));
   }, []);
 
   const setQuantity = useCallback((garmentId: string, quantity: number) => {
     const next = Math.max(0, Math.min(MAX_ITEM_QTY, quantity));
-    setItems((prev) => {
+    setLines((prev) => {
       if (next === 0) {
-        return prev.filter((line) => line.garment.id !== garmentId);
+        return prev.filter((line) => line.garmentId !== garmentId);
       }
       return prev.map((line) =>
-        line.garment.id === garmentId ? { ...line, quantity: next } : line,
+        line.garmentId === garmentId ? { ...line, quantity: next } : line,
       );
     });
   }, []);
 
   const checkout = useCallback(() => {
     setCheckoutComplete(true);
-    setItems([]);
+    setLines([]);
   }, []);
 
   const dismissCheckout = useCallback(() => {
     setCheckoutComplete(false);
     setIsOpen(false);
   }, []);
+
+  const items = useMemo(() => {
+    const resolved: CartLine[] = [];
+    for (const line of lines) {
+      const garment = getById(line.garmentId);
+      if (!garment) continue;
+      resolved.push({ garment, quantity: line.quantity });
+    }
+    return resolved;
+  }, [lines, getById]);
 
   const itemCount = useMemo(
     () => items.reduce((sum, line) => sum + line.quantity, 0),
