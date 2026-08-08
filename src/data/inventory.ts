@@ -8,6 +8,23 @@ export type InventoryStatus =
   | "Returned"
   | "Retired";
 
+/** Session decision from the Decision Queue (manual only). */
+export type QueueDecision =
+  | "Keep As Is"
+  | "Repair"
+  | "Discount"
+  | "Retire";
+
+/**
+ * Status shown in the inventory table — base status overridden by
+ * Decision Queue eligibility / manual choice.
+ */
+export type DisplayStatus =
+  | InventoryStatus
+  | "Needs Attention"
+  | "In Repair"
+  | "Discounted — In Rotation";
+
 export type PipelineStage = "Returned" | "Cleaning" | "Ready" | "Shipped";
 
 export type InventoryItem = Garment & {
@@ -16,6 +33,13 @@ export type InventoryItem = Garment & {
   margin: number;
   /** Present when status is In Rotation / pipeline stage Shipped. */
   shippedTo?: string;
+  incidents: IncidentEntry[];
+};
+
+export type IncidentEntry = {
+  date: string; // display form e.g. "3/2"
+  note: string;
+  flagged?: boolean;
 };
 
 /**
@@ -51,6 +75,34 @@ const costById: Record<string, number> = {
   "SPEC-067": 11,
   "SPEC-071": 10,
   "SPEC-089": 6,
+};
+
+/** Pre-populated damage / incident log — most items have a clean history. */
+const incidentsById: Record<string, IncidentEntry[]> = {
+  "SPEC-014": [
+    {
+      date: "3/2",
+      note: "Returned in excellent condition, no action needed",
+    },
+  ],
+  "SPEC-071": [
+    {
+      date: "1/15",
+      note: "Returned with visible elbow wear, flagged for Decision Queue",
+      flagged: true,
+    },
+    {
+      date: "2/8",
+      note: "Elbow wear noted during inspection, flagged for review",
+      flagged: true,
+    },
+  ],
+  "SPEC-067": [
+    {
+      date: "2/20",
+      note: "Interior lining repaired, back in rotation",
+    },
+  ],
 };
 
 export const THIN_MARGIN_THRESHOLD = 10;
@@ -89,6 +141,7 @@ export const inventory: InventoryItem[] = garments.map((garment) => {
     costPerCycle,
     margin: garment.price - costPerCycle,
     shippedTo: isWhitakerActive ? mockMember.name : undefined,
+    incidents: incidentsById[garment.id] ?? [],
   };
 });
 
@@ -129,11 +182,14 @@ function isGradeC(grade: string) {
   return grade === "C" || grade === "C+" || grade === "C-";
 }
 
+/** Grade C or 8+ cycles — automatically enters Needs Attention until decided. */
+export function isDecisionQueueCandidate(item: InventoryItem) {
+  return isGradeC(item.grade) || item.cycles >= HIGH_CYCLE_THRESHOLD;
+}
+
 /** Items needing write-off / repair review: Grade C or 8+ cycles. */
 export function getDecisionQueue(items: InventoryItem[] = inventory) {
-  return items.filter(
-    (item) => isGradeC(item.grade) || item.cycles >= HIGH_CYCLE_THRESHOLD,
-  );
+  return items.filter(isDecisionQueueCandidate);
 }
 
 export function decisionReason(item: InventoryItem) {
@@ -141,6 +197,31 @@ export function decisionReason(item: InventoryItem) {
   if (isGradeC(item.grade)) reasons.push("Grade C");
   if (item.cycles >= HIGH_CYCLE_THRESHOLD) reasons.push(`${item.cycles} cycles`);
   return reasons.join(" · ");
+}
+
+/**
+ * Resolve inventory Status column from base status + optional queue decision.
+ * Undecided candidates → "Needs Attention". Decisions map to outcome statuses.
+ */
+export function resolveDisplayStatus(
+  item: InventoryItem,
+  decision?: QueueDecision,
+): DisplayStatus {
+  if (!isDecisionQueueCandidate(item)) return item.status;
+  if (!decision) return "Needs Attention";
+
+  switch (decision) {
+    case "Keep As Is":
+      // Explicit return to circulation — not "preserve prior status"
+      // (prior may have been Retired / Needs Attention placeholders).
+      return "In Rotation";
+    case "Repair":
+      return "In Repair";
+    case "Discount":
+      return "Discounted — In Rotation";
+    case "Retire":
+      return "Retired";
+  }
 }
 
 /**

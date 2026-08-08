@@ -1,24 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
+import {
+  QUEUE_DECISIONS,
+  useDecisions,
+  type QueueDecision,
+} from "@/context/DecisionContext";
 import {
   decisionReason,
   getDecisionQueue,
   type InventoryItem,
 } from "@/data/inventory";
 
-type QueueAction = "Repair" | "Discount & Keep" | "Retire";
-
-const actions: QueueAction[] = ["Repair", "Discount & Keep", "Retire"];
-
 export function DecisionQueue() {
   const flagged = getDecisionQueue();
-  const [marked, setMarked] = useState<Record<string, QueueAction>>({});
+  const { getDecision, setDecision } = useDecisions();
 
-  function mark(item: InventoryItem, action: QueueAction) {
-    setMarked((prev) => ({ ...prev, [item.id]: action }));
+  function choose(item: InventoryItem, action: QueueDecision) {
+    setDecision(item.id, action);
   }
 
   return (
@@ -31,8 +31,8 @@ export function DecisionQueue() {
           Needs Attention
         </h2>
         <p className="mt-2 max-w-2xl font-sans text-sm text-ink/65">
-          Grade C pieces and items with 8+ cycles — review for repair, discount,
-          or retirement.
+          Grade C pieces and items with 8+ cycles — review and choose keep,
+          repair, discount, or retire. Nothing is pre-decided.
         </p>
       </div>
 
@@ -43,7 +43,7 @@ export function DecisionQueue() {
       ) : (
         <ul className="divide-y divide-parchment">
           {flagged.map((item) => {
-            const action = marked[item.id];
+            const selected = getDecision(item.id);
             return (
               <li
                 key={item.id}
@@ -64,26 +64,32 @@ export function DecisionQueue() {
                     <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink/60">
                       {item.cycles} cycles
                     </span>
+                    {selected ? (
+                      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-bottle">
+                        Decision: {selected}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-                  {action ? (
-                    <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-bottle">
-                      ✓ Marked for {action}
-                    </p>
-                  ) : (
-                    actions.map((label) => (
+                <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                  {QUEUE_DECISIONS.map((label) => {
+                    const isSelected = selected === label;
+                    return (
                       <button
                         key={label}
                         type="button"
-                        onClick={() => mark(item, label)}
-                        className="border border-ink/20 bg-paper px-3 py-2 font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-ink transition-opacity hover:border-ink hover:opacity-80"
+                        onClick={() => choose(item, label)}
+                        className={`px-3 py-2 font-sans text-[10px] font-medium uppercase tracking-[0.16em] transition-opacity ${
+                          isSelected
+                            ? "bg-ink text-paper"
+                            : "border border-ink/25 bg-transparent text-ink/55 hover:border-ink hover:text-ink"
+                        }`}
                       >
                         {label}
                       </button>
-                    ))
-                  )}
+                    );
+                  })}
                 </div>
               </li>
             );

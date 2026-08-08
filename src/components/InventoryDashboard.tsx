@@ -4,17 +4,20 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { DecisionQueue } from "@/components/DecisionQueue";
+import { IncidentLogModal } from "@/components/IncidentLogModal";
 import { RevenueSnapshot } from "@/components/RevenueSnapshot";
 import { ScrollHint } from "@/components/ScrollHint";
 import { SourcingAlerts } from "@/components/SourcingAlerts";
 import { SubscriberRoster } from "@/components/SubscriberRoster";
 import { TurnaroundPipeline } from "@/components/TurnaroundPipeline";
+import { useDecisions } from "@/context/DecisionContext";
 import {
   getInventoryStats,
   inventory,
   isThinMargin,
+  resolveDisplayStatus,
+  type DisplayStatus,
   type InventoryItem,
-  type InventoryStatus,
 } from "@/data/inventory";
 
 type SortKey =
@@ -28,6 +31,8 @@ type SortKey =
   | "margin";
 type SortDir = "asc" | "desc";
 
+type InventoryRow = InventoryItem & { displayStatus: DisplayStatus };
+
 const gradeRank: Record<string, number> = {
   "A+": 1,
   A: 2,
@@ -40,12 +45,15 @@ const gradeRank: Record<string, number> = {
   "C-": 9,
 };
 
-const statusRank: Record<InventoryStatus, number> = {
+const statusRank: Record<DisplayStatus, number> = {
+  "Needs Attention": 0,
   "In Rotation": 1,
-  Cleaning: 2,
-  Ready: 3,
-  Returned: 4,
-  Retired: 5,
+  "Discounted — In Rotation": 2,
+  Cleaning: 3,
+  Ready: 4,
+  "In Repair": 5,
+  Returned: 6,
+  Retired: 7,
 };
 
 function formatAverageMargin(value: number) {
@@ -53,7 +61,7 @@ function formatAverageMargin(value: number) {
   return Number.isInteger(rounded) ? `$${rounded}` : `$${rounded.toFixed(1)}`;
 }
 
-function compareItems(a: InventoryItem, b: InventoryItem, key: SortKey, dir: SortDir) {
+function compareItems(a: InventoryRow, b: InventoryRow, key: SortKey, dir: SortDir) {
   const factor = dir === "asc" ? 1 : -1;
   let result = 0;
 
@@ -71,7 +79,7 @@ function compareItems(a: InventoryItem, b: InventoryItem, key: SortKey, dir: Sor
       result = a.cycles - b.cycles;
       break;
     case "status":
-      result = statusRank[a.status] - statusRank[b.status];
+      result = statusRank[a.displayStatus] - statusRank[b.displayStatus];
       break;
     case "price":
       result = a.price - b.price;
@@ -118,14 +126,19 @@ function SortHeader({
   );
 }
 
-function statusTone(status: InventoryStatus) {
+function statusTone(status: DisplayStatus) {
   switch (status) {
+    case "Needs Attention":
+      return "text-oxblood";
     case "In Rotation":
+    case "Discounted — In Rotation":
       return "text-bottle";
     case "Cleaning":
       return "text-brass";
     case "Ready":
       return "text-ink/70";
+    case "In Repair":
+      return "text-brass";
     case "Returned":
       return "text-ink/55";
     case "Retired":
@@ -135,13 +148,20 @@ function statusTone(status: InventoryStatus) {
 
 export function InventoryDashboard() {
   const stats = getInventoryStats();
+  const { getDecision } = useDecisions();
   const [sortKey, setSortKey] = useState<SortKey>("id");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [logItemId, setLogItemId] = useState<string | null>(null);
 
-  const rows = useMemo(
-    () => [...inventory].sort((a, b) => compareItems(a, b, sortKey, sortDir)),
-    [sortKey, sortDir],
-  );
+  const rows = useMemo(() => {
+    const withStatus: InventoryRow[] = inventory.map((item) => ({
+      ...item,
+      displayStatus: resolveDisplayStatus(item, getDecision(item.id)),
+    }));
+    return withStatus.sort((a, b) => compareItems(a, b, sortKey, sortDir));
+  }, [getDecision, sortKey, sortDir]);
+
+  const logItem = rows.find((item) => item.id === logItemId) ?? null;
 
   function handleSort(key: SortKey) {
     if (key === sortKey) {
@@ -150,6 +170,23 @@ export function InventoryDashboard() {
     }
     setSortKey(key);
     setSortDir("asc");
+  }
+
+  function LogButton({ item }: { item: InventoryItem }) {
+    const flagged = item.incidents.some((entry) => entry.flagged);
+    return (
+      <button
+        type="button"
+        onClick={() => setLogItemId(item.id)}
+        className={`font-mono text-[10px] uppercase tracking-[0.16em] transition-opacity hover:opacity-70 ${
+          flagged ? "text-oxblood" : "text-ink/50"
+        }`}
+      >
+        {item.incidents.length > 0
+          ? `Log (${item.incidents.length})`
+          : "Log"}
+      </button>
+    );
   }
 
   const summary = [
@@ -203,19 +240,24 @@ export function InventoryDashboard() {
         <ul className="mt-8 space-y-3 md:hidden">
           {rows.map((item) => (
             <li key={item.id} className="border border-parchment px-4 py-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
-                {item.id}
-              </p>
-              <Link
-                href={`/item/${item.id}`}
-                className="mt-1 block font-display text-lg text-ink"
-              >
-                {item.name}
-              </Link>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
+                    {item.id}
+                  </p>
+                  <Link
+                    href={`/item/${item.id}`}
+                    className="mt-1 block font-display text-lg text-ink"
+                  >
+                    {item.name}
+                  </Link>
+                </div>
+                <LogButton item={item} />
+              </div>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <ConditionGradeTag grade={item.grade} />
-                <span className={`font-mono text-[10px] uppercase tracking-[0.14em] ${statusTone(item.status)}`}>
-                  {item.status}
+                <span className={`font-mono text-[10px] uppercase tracking-[0.14em] ${statusTone(item.displayStatus)}`}>
+                  {item.displayStatus}
                 </span>
                 <span className="font-mono text-[11px] text-ink/60">
                   {item.cycles} cycles
@@ -253,7 +295,7 @@ export function InventoryDashboard() {
 
         {/* Tablet/desktop: scrollable table with hint */}
         <ScrollHint className="mt-10 hidden md:block">
-          <table className="w-full min-w-[64rem] border-collapse text-left">
+          <table className="w-full min-w-[70rem] border-collapse text-left">
             <thead>
               <tr className="border-b border-parchment">
                 <SortHeader label="Item ID" column="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
@@ -264,6 +306,9 @@ export function InventoryDashboard() {
                 <SortHeader label="Price/cycle" column="price" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="Cost/Cycle" column="cost" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="Margin" column="margin" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <th className="pb-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink/55">
+                  Incidents
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -286,8 +331,8 @@ export function InventoryDashboard() {
                   <td className="py-3.5 pr-4 font-mono text-[12px] tabular-nums text-ink">
                     {item.cycles}
                   </td>
-                  <td className={`py-3.5 pr-4 font-mono text-[10px] uppercase tracking-[0.16em] ${statusTone(item.status)}`}>
-                    {item.status}
+                  <td className={`py-3.5 pr-4 font-mono text-[10px] uppercase tracking-[0.16em] ${statusTone(item.displayStatus)}`}>
+                    {item.displayStatus}
                   </td>
                   <td className="py-3.5 pr-4 font-mono text-[12px] tabular-nums text-ink">
                     ${item.price}
@@ -296,17 +341,24 @@ export function InventoryDashboard() {
                     ${item.costPerCycle}
                   </td>
                   <td
-                    className={`py-3.5 font-mono text-[12px] tabular-nums ${
+                    className={`py-3.5 pr-4 font-mono text-[12px] tabular-nums ${
                       isThinMargin(item.margin) ? "text-oxblood" : "text-bottle"
                     }`}
                   >
                     ${item.margin}
+                  </td>
+                  <td className="py-3.5">
+                    <LogButton item={item} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </ScrollHint>
+
+        {logItem ? (
+          <IncidentLogModal item={logItem} onClose={() => setLogItemId(null)} />
+        ) : null}
 
         <DecisionQueue />
         <TurnaroundPipeline />
