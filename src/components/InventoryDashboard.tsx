@@ -4,13 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { DecisionQueue } from "@/components/DecisionQueue";
+import { RevenueSnapshot } from "@/components/RevenueSnapshot";
 import { SourcingAlerts } from "@/components/SourcingAlerts";
 import { TurnaroundPipeline } from "@/components/TurnaroundPipeline";
 import {
   getInventoryStats,
   inventory,
   isThinMargin,
-  revenueSnapshot,
   type InventoryItem,
   type InventoryStatus,
 } from "@/data/inventory";
@@ -161,25 +161,6 @@ export function InventoryDashboard() {
     },
   ];
 
-  const revenue = [
-    {
-      label: "Active Subscribers",
-      value: String(revenueSnapshot.activeSubscribers),
-    },
-    {
-      label: "Monthly Recurring Revenue",
-      value: `$${revenueSnapshot.monthlyRecurringRevenue.toLocaleString("en-US")}`,
-    },
-    {
-      label: "Avg. Items per Subscriber",
-      value: String(revenueSnapshot.avgItemsPerSubscriber),
-    },
-    {
-      label: "Avg. Revenue per Subscriber",
-      value: `$${revenueSnapshot.avgRevenuePerSubscriber}`,
-    },
-  ];
-
   return (
     <section className="bg-paper px-5 pb-16 pt-10 md:px-8 md:pb-20 md:pt-12">
       <div className="mx-auto max-w-6xl">
@@ -196,23 +177,7 @@ export function InventoryDashboard() {
           </p>
         </header>
 
-        <div className="mt-8">
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink/45">
-            Revenue Snapshot
-          </p>
-          <div className="grid grid-cols-2 gap-px bg-parchment md:grid-cols-4">
-            {revenue.map((stat) => (
-              <div key={stat.label} className="bg-paper px-4 py-5 md:px-5">
-                <p className="mt-0 font-display text-3xl text-ink md:text-4xl">
-                  {stat.value}
-                </p>
-                <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <RevenueSnapshot />
 
         <div className="mt-8">
           <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink/45">

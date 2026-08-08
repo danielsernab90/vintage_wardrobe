@@ -138,7 +138,83 @@ export const revenueSnapshot = {
   monthlyRecurringRevenue: 3122,
   avgItemsPerSubscriber: 4.3,
   avgRevenuePerSubscriber: 82,
+  tiers: {
+    starter: { subscribers: 20, price: 49, avgItems: 3.0 },
+    signature: { subscribers: 12, price: 99, avgItems: 5.0 },
+    archivist: { subscribers: 6, price: 159, avgItems: 7.0 },
+  },
+  mrrTrendNote: "+8% vs. last month",
 } as const;
+
+export type RevenueStatKey =
+  | "subscribers"
+  | "mrr"
+  | "avgItems"
+  | "avgRevenue";
+
+export type RevenueStatDetail = {
+  key: RevenueStatKey;
+  label: string;
+  value: string;
+  title: string;
+  lines: string[];
+  note?: string;
+};
+
+export function getRevenueStatDetails(): RevenueStatDetail[] {
+  const { tiers, mrrTrendNote } = revenueSnapshot;
+  const starterMrr = tiers.starter.subscribers * tiers.starter.price;
+  const signatureMrr = tiers.signature.subscribers * tiers.signature.price;
+  const archivistMrr = tiers.archivist.subscribers * tiers.archivist.price;
+
+  return [
+    {
+      key: "subscribers",
+      label: "Active Subscribers",
+      value: String(revenueSnapshot.activeSubscribers),
+      title: "Active Subscribers",
+      lines: [
+        `Starter: ${tiers.starter.subscribers}`,
+        `Signature: ${tiers.signature.subscribers}`,
+        `Archivist: ${tiers.archivist.subscribers}`,
+      ],
+    },
+    {
+      key: "mrr",
+      label: "Monthly Recurring Revenue",
+      value: `$${revenueSnapshot.monthlyRecurringRevenue.toLocaleString("en-US")}`,
+      title: "Monthly Recurring Revenue",
+      lines: [
+        `Starter: $${starterMrr.toLocaleString("en-US")}`,
+        `Signature: $${signatureMrr.toLocaleString("en-US")}`,
+        `Archivist: $${archivistMrr.toLocaleString("en-US")}`,
+      ],
+      note: mrrTrendNote,
+    },
+    {
+      key: "avgItems",
+      label: "Avg. Items per Subscriber",
+      value: String(revenueSnapshot.avgItemsPerSubscriber),
+      title: "Avg. Items per Subscriber",
+      lines: [
+        `Starter avg: ${tiers.starter.avgItems.toFixed(1)}`,
+        `Signature avg: ${tiers.signature.avgItems.toFixed(1)}`,
+        `Archivist avg: ${tiers.archivist.avgItems.toFixed(1)}`,
+      ],
+    },
+    {
+      key: "avgRevenue",
+      label: "Avg. Revenue per Subscriber",
+      value: `$${revenueSnapshot.avgRevenuePerSubscriber}`,
+      title: "Avg. Revenue per Subscriber",
+      lines: [
+        `Lowest tier: $${tiers.starter.price}`,
+        `Highest tier: $${tiers.archivist.price}`,
+        `Blended average: $${revenueSnapshot.avgRevenuePerSubscriber}`,
+      ],
+    },
+  ];
+}
 
 const LOW_STOCK_THRESHOLD = 1;
 
