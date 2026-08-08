@@ -1,54 +1,23 @@
 import type { Metadata } from "next";
 import { OrnamentDivider } from "@/components/OrnamentDivider";
 import { JoinWaitlistButton } from "@/components/JoinWaitlistButton";
+import {
+  fetchSubscriptionTiers,
+  piecesLabel,
+  piecesPerMonthLabel,
+} from "@/lib/tiers";
 
 export const metadata: Metadata = {
   title: "Subscription — Archive No.",
-  description: "Choose your vintage menswear rotation. Starter, Signature, and Archivist membership tiers.",
+  description:
+    "Choose your vintage menswear rotation. Starter, Signature, and Archivist membership tiers.",
 };
 
-const tiers = [
-  {
-    name: "Starter",
-    pieces: "3 pieces/month",
-    piecesLabel: "3 pieces",
-    price: 49,
-    description: "Entry rotation, casual staples",
-    features: ["Monthly swap", "Free shipping both ways", "Cancel anytime"],
-    popular: false,
-  },
-  {
-    name: "Signature",
-    pieces: "5 pieces/month",
-    piecesLabel: "5 pieces",
-    price: 99,
-    description: "Core offering — mix of outerwear and everyday pieces",
-    features: [
-      "Monthly swap",
-      "Free shipping both ways",
-      "Priority sizing support",
-      "Cancel anytime",
-    ],
-    popular: true,
-  },
-  {
-    name: "Archivist",
-    pieces: "7 pieces/month",
-    piecesLabel: "7 pieces",
-    price: 159,
-    description: "Priority access to Grade-A rare pieces",
-    features: [
-      "Monthly swap",
-      "Free shipping both ways",
-      "First access to new intake",
-      "Dedicated concierge",
-      "Cancel anytime",
-    ],
-    popular: false,
-  },
-] as const;
+export const dynamic = "force-dynamic";
 
-export default function MembershipPage() {
+export default async function MembershipPage() {
+  const tiers = await fetchSubscriptionTiers();
+
   return (
     <section className="bg-paper px-5 pb-20 pt-14 md:px-10 md:pb-28 md:pt-20">
       <div className="mx-auto flex max-w-6xl flex-col items-center">
@@ -64,13 +33,13 @@ export default function MembershipPage() {
         <div className="mt-12 grid w-full grid-cols-1 gap-8 md:mt-16 md:grid-cols-3 md:gap-0 lg:gap-10">
           {tiers.map((tier) => (
             <article
-              key={tier.name}
+              key={tier.id}
               className={`flex flex-col px-6 py-8 md:px-8 md:py-10 ${
-                tier.popular ? "border border-brass" : ""
+                tier.isFeatured ? "border border-brass" : ""
               }`}
             >
               <div className="mb-5 min-h-[1.25rem]">
-                {tier.popular ? (
+                {tier.isFeatured ? (
                   <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-brass">
                     Most Popular
                   </p>
@@ -89,11 +58,11 @@ export default function MembershipPage() {
               </p>
 
               <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink/70">
-                {tier.pieces}
+                {piecesPerMonthLabel(tier.itemsPerMonth)}
               </p>
 
               <p className="mt-5 font-sans text-sm leading-relaxed text-ink/75">
-                {tier.description}
+                {tier.positioning}
               </p>
 
               <ul className="mt-6 flex flex-1 flex-col gap-2.5 border-t border-parchment pt-6">
@@ -112,7 +81,7 @@ export default function MembershipPage() {
                   tier={{
                     name: tier.name,
                     price: tier.price,
-                    piecesLabel: tier.piecesLabel,
+                    piecesLabel: piecesLabel(tier.itemsPerMonth),
                   }}
                 />
               </div>

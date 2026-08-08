@@ -12,6 +12,7 @@ import { RevenueSnapshot } from "@/components/RevenueSnapshot";
 import { ScrollHint } from "@/components/ScrollHint";
 import { SourcingAlerts } from "@/components/SourcingAlerts";
 import { SubscriberRoster } from "@/components/SubscriberRoster";
+import { SubscriptionTiersAdmin } from "@/components/SubscriptionTiersAdmin";
 import { TurnaroundPipeline } from "@/components/TurnaroundPipeline";
 import { useDecisions } from "@/context/DecisionContext";
 import {
@@ -456,6 +457,7 @@ export function InventoryDashboard() {
         <TurnaroundPipeline />
         <AdminMessages />
         <SubscriberRoster />
+        <SubscriptionTiersAdmin />
         <SourcingAlerts />
         <ActivityLog />
       </div>
