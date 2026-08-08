@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { OrnamentDivider } from "@/components/OrnamentDivider";
-import { ButtonLink } from "@/components/ButtonLink";
+import { JoinWaitlistButton } from "@/components/JoinWaitlistButton";
 
 export const metadata: Metadata = {
   title: "How It Works — Archive No.",
@@ -85,7 +85,7 @@ export default function HowItWorksPage() {
             Ready to build your rotation?
           </h2>
           <div className="mt-8 w-full max-w-xs">
-            <ButtonLink href="/waitlist">Join Waitlist</ButtonLink>
+            <JoinWaitlistButton />
           </div>
         </div>
       </div>

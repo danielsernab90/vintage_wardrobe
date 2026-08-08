@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { OrnamentDivider } from "@/components/OrnamentDivider";
 import { CatalogTile } from "@/components/CatalogTile";
-import { ButtonLink } from "@/components/ButtonLink";
+import { JoinWaitlistButton } from "@/components/JoinWaitlistButton";
 import {
   recommendCapsule,
   type FitAnswer,
@@ -72,7 +72,7 @@ export function QuizFlow() {
           </div>
 
           <div className="mt-14 w-full max-w-xs">
-            <ButtonLink href="/waitlist">Join Waitlist</ButtonLink>
+            <JoinWaitlistButton />
           </div>
         </div>
       </section>

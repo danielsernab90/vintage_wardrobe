@@ -1,5 +1,6 @@
 import { OrnamentDivider } from "./OrnamentDivider";
 import { ButtonLink } from "./ButtonLink";
+import { JoinWaitlistButton } from "./JoinWaitlistButton";
 
 export function Hero() {
   return (
@@ -14,7 +15,7 @@ export function Hero() {
         </div>
         <div className="mt-10 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
           <div className="sm:flex-1">
-            <ButtonLink href="/waitlist">Join Waitlist</ButtonLink>
+            <JoinWaitlistButton />
           </div>
           <div className="sm:flex-1">
             <ButtonLink href="/quiz" variant="outline">

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { OrnamentDivider } from "@/components/OrnamentDivider";
-import { ButtonLink } from "@/components/ButtonLink";
+import { JoinWaitlistButton } from "@/components/JoinWaitlistButton";
 
 export const metadata: Metadata = {
   title: "Subscription — Archive No.",
@@ -11,6 +11,7 @@ const tiers = [
   {
     name: "Starter",
     pieces: "3 pieces/month",
+    piecesLabel: "3 pieces",
     price: 49,
     description: "Entry rotation, casual staples",
     features: ["Monthly swap", "Free shipping both ways", "Cancel anytime"],
@@ -19,6 +20,7 @@ const tiers = [
   {
     name: "Signature",
     pieces: "5 pieces/month",
+    piecesLabel: "5 pieces",
     price: 99,
     description: "Core offering — mix of outerwear and everyday pieces",
     features: [
@@ -32,6 +34,7 @@ const tiers = [
   {
     name: "Archivist",
     pieces: "7 pieces/month",
+    piecesLabel: "7 pieces",
     price: 159,
     description: "Priority access to Grade-A rare pieces",
     features: [
@@ -105,7 +108,13 @@ export default function MembershipPage() {
               </ul>
 
               <div className="mt-8">
-                <ButtonLink href="/waitlist">Join Waitlist</ButtonLink>
+                <JoinWaitlistButton
+                  tier={{
+                    name: tier.name,
+                    price: tier.price,
+                    piecesLabel: tier.piecesLabel,
+                  }}
+                />
               </div>
             </article>
           ))}
