@@ -1,4 +1,5 @@
 import { getGarmentById, type Garment } from "./garments";
+import { getSubscriberByName } from "./subscribers";
 
 export type ActiveRental = {
   garment: Garment;
@@ -12,9 +13,13 @@ export type RentalHistoryEntry = {
   status: "Returned";
 };
 
+const whitaker = getSubscriberByName("James Whitaker");
+
+/** Demo My Closet member — same person as MEM-001 on the admin roster. */
 export const mockMember = {
-  name: "James Whitaker",
-  plan: "Signature",
+  id: whitaker?.id ?? "MEM-001",
+  name: whitaker?.name ?? "James Whitaker",
+  plan: whitaker?.tier ?? "Signature",
   memberSince: "March 2026",
 } as const;
 

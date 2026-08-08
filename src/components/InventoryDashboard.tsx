@@ -6,6 +6,7 @@ import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { DecisionQueue } from "@/components/DecisionQueue";
 import { RevenueSnapshot } from "@/components/RevenueSnapshot";
 import { SourcingAlerts } from "@/components/SourcingAlerts";
+import { SubscriberRoster } from "@/components/SubscriberRoster";
 import { TurnaroundPipeline } from "@/components/TurnaroundPipeline";
 import {
   getInventoryStats,
@@ -255,6 +256,7 @@ export function InventoryDashboard() {
 
         <DecisionQueue />
         <TurnaroundPipeline />
+        <SubscriberRoster />
         <SourcingAlerts />
       </div>
     </section>
