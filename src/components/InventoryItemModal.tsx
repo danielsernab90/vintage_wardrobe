@@ -228,7 +228,7 @@ export function InventoryItemModal({
               {mode === "add" ? "Add Item" : "Edit Item"}
             </h2>
             <p className="mt-2 font-sans text-xs leading-relaxed text-ink/55">
-              Session-only — changes and uploads clear on refresh.
+              Saves to Supabase — edits persist across refresh.
             </p>
           </div>
           <button

@@ -164,7 +164,10 @@ export function InventoryDashboard() {
   const rows = useMemo(() => {
     const withStatus: InventoryRow[] = items.map((item) => ({
       ...item,
-      displayStatus: resolveDisplayStatus(item, getDecision(item.id)),
+      displayStatus: resolveDisplayStatus(
+        item,
+        getDecision(item.id) ?? item.decision,
+      ),
     }));
     return withStatus.sort((a, b) => compareItems(a, b, sortKey, sortDir));
   }, [items, getDecision, sortKey, sortDir]);
@@ -245,8 +248,8 @@ export function InventoryDashboard() {
             Inventory Dashboard
           </h1>
           <p className="mt-2 max-w-2xl font-sans text-sm text-ink/65">
-            Capsule inventory with session add/edit — condition, cycles, cost,
-            and margin. Changes clear on refresh until a backend is connected.
+            Capsule inventory live from Supabase — condition, cycles, cost,
+            and margin. Edits persist across refresh.
           </p>
         </header>
 

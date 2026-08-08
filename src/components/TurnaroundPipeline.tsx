@@ -161,7 +161,7 @@ function PipelineColumn({
           items.map((item) => {
             const current = statusToPipelineStage(item.status);
             const highRisk = isHighRiskReturn(item);
-            const selected = getDecision(item.id);
+            const selected = getDecision(item.id) ?? item.decision;
             const discounted = isDiscounted(item);
 
             return (
