@@ -5,6 +5,8 @@ import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { CustomerMessages } from "@/components/CustomerMessages";
 import { GarmentImage } from "@/components/GarmentImage";
 import { ButtonLink } from "@/components/ButtonLink";
+import { SavedForLater } from "@/components/SavedForLater";
+import { ShippingAddressSection } from "@/components/ShippingAddressSection";
 import {
   activeRentals,
   memberImpact,
@@ -189,6 +191,10 @@ export default function AccountPage() {
             </div>
           </div>
         </div>
+
+        <ShippingAddressSection />
+
+        <SavedForLater />
 
         <CustomerMessages />
 

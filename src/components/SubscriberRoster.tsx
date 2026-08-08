@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollHint } from "@/components/ScrollHint";
 import { useMessagesUi } from "@/context/MessagesUiContext";
 import {
-  subscribers,
   type Subscriber,
   type SubscriberStatus,
   type SubscriberTier,
 } from "@/data/subscribers";
+import { fetchSubscribers } from "@/lib/subscribers";
 
 type SortKey = "name" | "tier" | "joinDate" | "itemsOut" | "status";
 type SortDir = "asc" | "desc";
@@ -97,6 +97,7 @@ function SortHeader({
 function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
   const { openThreadForSubscriber } = useMessagesUi();
   const [open, setOpen] = useState(false);
+  const [showAddress, setShowAddress] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -104,10 +105,14 @@ function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
     function onPointerDown(event: MouseEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false);
+        setShowAddress(false);
       }
     }
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        setShowAddress(false);
+      }
     }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -121,7 +126,13 @@ function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
     <div className="relative inline-block" ref={rootRef}>
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          setOpen((prev) => {
+            const next = !prev;
+            if (!next) setShowAddress(false);
+            return next;
+          });
+        }}
         aria-haspopup="menu"
         aria-expanded={open}
         className="font-display text-base text-ink underline-offset-4 transition-opacity hover:opacity-70 hover:underline"
@@ -131,7 +142,7 @@ function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 top-full z-40 mt-1 min-w-[9rem] border border-brass bg-paper shadow-[0_6px_18px_rgba(28,26,23,0.1)]"
+          className="absolute left-0 top-full z-40 mt-1 min-w-[11rem] max-w-[16rem] border border-brass bg-paper shadow-[0_6px_18px_rgba(28,26,23,0.1)]"
         >
           <button
             type="button"
@@ -139,11 +150,27 @@ function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
             className="block w-full px-4 py-2.5 text-left font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-opacity hover:opacity-60"
             onClick={() => {
               setOpen(false);
+              setShowAddress(false);
               openThreadForSubscriber(subscriber.id);
             }}
           >
             Message
           </button>
+          <div className="h-px bg-parchment" aria-hidden="true" />
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-4 py-2.5 text-left font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-opacity hover:opacity-60"
+            onClick={() => setShowAddress((prev) => !prev)}
+            aria-expanded={showAddress}
+          >
+            Address
+          </button>
+          {showAddress ? (
+            <p className="border-t border-parchment px-4 py-3 font-sans text-sm font-normal normal-case leading-snug tracking-normal text-ink/80">
+              {subscriber.address || "No address on file."}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -153,10 +180,30 @@ function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
 export function SubscriberRoster() {
   const [sortKey, setSortKey] = useState<SortKey>("joinDate");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [roster, setRoster] = useState<Subscriber[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadRoster = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await fetchSubscribers();
+      setRoster(rows);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load roster");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRoster();
+  }, [loadRoster]);
 
   const rows = useMemo(
-    () => [...subscribers].sort((a, b) => compare(a, b, sortKey, sortDir)),
-    [sortKey, sortDir],
+    () => [...roster].sort((a, b) => compare(a, b, sortKey, sortDir)),
+    [roster, sortKey, sortDir],
   );
 
   function handleSort(key: SortKey) {
@@ -165,7 +212,7 @@ export function SubscriberRoster() {
       return;
     }
     setSortKey(key);
-    setSortDir(key === "joinDate" || key === "tier" ? "asc" : "asc");
+    setSortDir("asc");
   }
 
   return (
@@ -178,74 +225,125 @@ export function SubscriberRoster() {
           Subscriber Roster
         </h2>
         <p className="mt-2 max-w-2xl font-sans text-sm text-ink/65">
-          Representative sample of the active base — identities used across
-          operations views. Click a name to message.
+          Live subscriber base from Supabase — click a name to message or view
+          address.
         </p>
       </div>
 
-      {/* Mobile cards */}
-      <ul className="space-y-0 divide-y divide-parchment px-5 py-2 md:hidden">
-        {rows.map((sub) => (
-          <li key={sub.id} className="py-4">
-            <SubscriberNameMenu subscriber={sub} />
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink/55">
-              {sub.tier} · Joined {formatJoinDate(sub.joinDate)}
-            </p>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="font-mono text-[11px] text-ink/65">
-                {sub.itemsOut} items out
-              </span>
-              <span
-                className={`font-mono text-[10px] uppercase tracking-[0.16em] ${
-                  sub.status === "Active" ? "text-bottle" : "text-ink/45"
-                }`}
-              >
-                {sub.status}
-              </span>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* Tablet/desktop table */}
-      <ScrollHint className="hidden px-5 py-4 md:block md:px-6">
-        <table className="w-full min-w-[44rem] border-collapse text-left">
-          <thead>
-            <tr className="border-b border-parchment">
-              <SortHeader label="Name" column="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortHeader label="Tier" column="tier" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortHeader label="Join Date" column="joinDate" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortHeader label="Items Out" column="itemsOut" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortHeader label="Status" column="status" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-            </tr>
-          </thead>
-          <tbody>
+      {loading ? (
+        <p className="px-5 py-8 font-mono text-[11px] uppercase tracking-[0.16em] text-ink/45 md:px-6">
+          Loading roster…
+        </p>
+      ) : error ? (
+        <div className="px-5 py-8 md:px-6">
+          <p className="font-sans text-sm text-red-800" role="alert">
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadRoster()}
+            className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink underline-offset-4 hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <ul className="space-y-0 divide-y divide-parchment px-5 py-2 md:hidden">
             {rows.map((sub) => (
-              <tr key={sub.id} className="border-b border-parchment/70">
-                <td className="py-3.5 pr-4">
-                  <SubscriberNameMenu subscriber={sub} />
-                </td>
-                <td className="py-3.5 pr-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink/70">
-                  {sub.tier}
-                </td>
-                <td className="py-3.5 pr-4 font-mono text-[11px] uppercase tracking-[0.12em] text-ink/65">
-                  {formatJoinDate(sub.joinDate)}
-                </td>
-                <td className="py-3.5 pr-4 font-mono text-[12px] tabular-nums text-ink">
-                  {sub.itemsOut}
-                </td>
-                <td
-                  className={`py-3.5 font-mono text-[10px] uppercase tracking-[0.16em] ${
-                    sub.status === "Active" ? "text-bottle" : "text-ink/45"
-                  }`}
-                >
-                  {sub.status}
-                </td>
-              </tr>
+              <li key={sub.id} className="py-4">
+                <SubscriberNameMenu subscriber={sub} />
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink/55">
+                  {sub.tier} · Joined {formatJoinDate(sub.joinDate)}
+                </p>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-ink/65">
+                    {sub.itemsOut} items out
+                  </span>
+                  <span
+                    className={`font-mono text-[10px] uppercase tracking-[0.16em] ${
+                      sub.status === "Active" ? "text-bottle" : "text-ink/45"
+                    }`}
+                  >
+                    {sub.status}
+                  </span>
+                </div>
+              </li>
             ))}
-          </tbody>
-        </table>
-      </ScrollHint>
+          </ul>
+
+          {/* Tablet/desktop table */}
+          <ScrollHint className="hidden px-5 py-4 md:block md:px-6">
+            <table className="w-full min-w-[44rem] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-parchment">
+                  <SortHeader
+                    label="Name"
+                    column="name"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortHeader
+                    label="Tier"
+                    column="tier"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortHeader
+                    label="Join Date"
+                    column="joinDate"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortHeader
+                    label="Items Out"
+                    column="itemsOut"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortHeader
+                    label="Status"
+                    column="status"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={handleSort}
+                  />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((sub) => (
+                  <tr key={sub.id} className="border-b border-parchment/70">
+                    <td className="py-3.5 pr-4">
+                      <SubscriberNameMenu subscriber={sub} />
+                    </td>
+                    <td className="py-3.5 pr-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink/70">
+                      {sub.tier}
+                    </td>
+                    <td className="py-3.5 pr-4 font-mono text-[11px] uppercase tracking-[0.12em] text-ink/65">
+                      {formatJoinDate(sub.joinDate)}
+                    </td>
+                    <td className="py-3.5 pr-4 font-mono text-[12px] tabular-nums text-ink">
+                      {sub.itemsOut}
+                    </td>
+                    <td
+                      className={`py-3.5 font-mono text-[10px] uppercase tracking-[0.16em] ${
+                        sub.status === "Active" ? "text-bottle" : "text-ink/45"
+                      }`}
+                    >
+                      {sub.status}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollHint>
+        </>
+      )}
     </section>
   );
 }

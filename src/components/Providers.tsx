@@ -6,6 +6,7 @@ import { DecisionProvider } from "@/context/DecisionContext";
 import { InventoryProvider } from "@/context/InventoryContext";
 import { MessagesUiProvider } from "@/context/MessagesUiContext";
 import { WaitlistProvider } from "@/context/WaitlistContext";
+import { WishlistProvider } from "@/context/WishlistContext";
 import { WaitlistModal } from "@/components/WaitlistModal";
 import type { ReactNode } from "react";
 
@@ -14,14 +15,16 @@ export function Providers({ children }: { children: ReactNode }) {
     <AuthProvider>
       <MessagesUiProvider>
         <InventoryProvider>
-          <CartProvider>
-            <DecisionProvider>
-              <WaitlistProvider>
-                {children}
-                <WaitlistModal />
-              </WaitlistProvider>
-            </DecisionProvider>
-          </CartProvider>
+          <WishlistProvider>
+            <CartProvider>
+              <DecisionProvider>
+                <WaitlistProvider>
+                  {children}
+                  <WaitlistModal />
+                </WaitlistProvider>
+              </DecisionProvider>
+            </CartProvider>
+          </WishlistProvider>
         </InventoryProvider>
       </MessagesUiProvider>
     </AuthProvider>

@@ -6,6 +6,7 @@ import type { InventoryItem } from "@/data/inventory";
 import { ConditionGradeTag } from "./ConditionGradeTag";
 import { GarmentImage } from "./GarmentImage";
 import { AddToRotationButton } from "./AddToRotationButton";
+import { SaveForNextRotationButton } from "./SaveForNextRotationButton";
 
 type Props = {
   garment: {
@@ -57,8 +58,9 @@ export function CatalogTile({ garment, priority = false }: Props) {
             />
           </div>
         </Link>
-        <div className="mt-4">
+        <div className="mt-4 space-y-2">
           <AddToRotationButton garmentId={garment.id} />
+          <SaveForNextRotationButton garmentId={garment.id} />
         </div>
       </div>
     </article>

@@ -5,6 +5,7 @@ import { AddToRotationButton } from "@/components/AddToRotationButton";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { CyclePrice } from "@/components/CyclePrice";
 import { GarmentImage } from "@/components/GarmentImage";
+import { SaveForNextRotationButton } from "@/components/SaveForNextRotationButton";
 import { useInventory } from "@/context/InventoryContext";
 import { formatSpecimenId } from "@/data/garments";
 
@@ -78,8 +79,9 @@ export function ItemDetailClient({ id }: Props) {
             />
           </div>
 
-          <div className="mt-8 max-w-xs">
+          <div className="mt-8 max-w-xs space-y-2">
             <AddToRotationButton garmentId={garment.id} />
+            <SaveForNextRotationButton garmentId={garment.id} />
           </div>
         </div>
       </div>
