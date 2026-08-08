@@ -26,10 +26,14 @@ export function MessageThread({
   onSend,
 }: Props) {
   const [draft, setDraft] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
+  // Scroll only within the thread pane — never the page (scrollIntoView was
+  // jumping /account and /admin down to Messages after login load).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages.length]);
 
   async function handleSubmit(event: FormEvent) {
@@ -42,7 +46,10 @@ export function MessageThread({
 
   return (
     <div className="flex flex-col border border-parchment bg-paper">
-      <div className="max-h-[28rem] min-h-[16rem] space-y-4 overflow-y-auto px-4 py-5 md:px-5">
+      <div
+        ref={listRef}
+        className="max-h-[28rem] min-h-[16rem] space-y-4 overflow-y-auto px-4 py-5 md:px-5"
+      >
         {loading ? (
           <p className="font-sans text-sm text-ink/55">Loading...</p>
         ) : messages.length === 0 ? (
@@ -75,7 +82,6 @@ export function MessageThread({
             );
           })
         )}
-        <div ref={bottomRef} />
       </div>
 
       <form

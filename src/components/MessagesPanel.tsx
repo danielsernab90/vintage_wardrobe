@@ -1,10 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { MessageThread } from "@/components/MessageThread";
 import { useAuth } from "@/context/AuthContext";
 import { useMessagesUi } from "@/context/MessagesUiContext";
 import { subscribers, getSubscriberById } from "@/data/subscribers";
+import {
+  isAdminUnread,
+  loadAdminInboxReads,
+  markAdminConversationRead,
+} from "@/lib/adminInboxReads";
 import {
   fetchConversationBySubscriberId,
   fetchInbox,
@@ -23,7 +35,32 @@ type Props = {
   onClose: () => void;
 };
 
-type SortMode = "newest" | "oldest";
+type SortMode = "newest" | "az";
+
+function ControlChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`px-2.5 py-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] transition-opacity ${
+        active
+          ? "bg-ink text-paper"
+          : "border border-ink/20 bg-transparent text-ink/55 hover:border-ink hover:text-ink"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function MessagesPanel({ open, onClose }: Props) {
   const { role } = useAuth();
@@ -218,13 +255,17 @@ function AdminPanel({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [reads, setReads] = useState<Record<string, string>>({});
   const [pickingSubscriber, setPickingSubscriber] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
 
   const loadInbox = useCallback(async () => {
     setLoadingInbox(true);
     setError(null);
     try {
       setInbox(await fetchInbox());
+      setReads(loadAdminInboxReads());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load inbox");
     } finally {
@@ -240,12 +281,18 @@ function AdminPanel({
     const roster = getSubscriberById(subscriberId);
     const name = roster?.name ?? subscriberId;
     setPickingSubscriber(false);
+    setPickerSearch("");
     setLoadingThread(true);
     setError(null);
     try {
       const conversation = await getOrCreateConversation(subscriberId, name);
+      const thread = await fetchMessages(conversation.id);
       setActive(conversation);
-      setMessages(await fetchMessages(conversation.id));
+      setMessages(thread);
+      const stamp =
+        thread[thread.length - 1]?.created_at ?? new Date().toISOString();
+      markAdminConversationRead(conversation.id, stamp);
+      setReads(loadAdminInboxReads());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to open thread");
       setActive(null);
@@ -268,15 +315,35 @@ function AdminPanel({
 
   const visibleInbox = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const filtered = q
-      ? inbox.filter((row) => row.subscriber_name.toLowerCase().includes(q))
-      : inbox;
-    return [...filtered].sort((a, b) =>
+    let rows = inbox;
+    if (q) {
+      rows = rows.filter((row) =>
+        row.subscriber_name.toLowerCase().includes(q),
+      );
+    }
+    if (unreadOnly) {
+      rows = rows.filter((row) =>
+        isAdminUnread(row.lastMessage, row.id, reads),
+      );
+    }
+    return [...rows].sort((a, b) =>
       sortMode === "newest"
         ? b.lastActivityAt.localeCompare(a.lastActivityAt)
-        : a.lastActivityAt.localeCompare(b.lastActivityAt),
+        : a.subscriber_name.localeCompare(b.subscriber_name),
     );
-  }, [inbox, search, sortMode]);
+  }, [inbox, search, sortMode, unreadOnly, reads]);
+
+  const pickerSubscribers = useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase();
+    const list = q
+      ? subscribers.filter(
+          (sub) =>
+            sub.name.toLowerCase().includes(q) ||
+            sub.id.toLowerCase().includes(q),
+        )
+      : subscribers;
+    return [...list].sort((a, b) => a.name.localeCompare(b.name));
+  }, [pickerSearch]);
 
   async function handleSend(content: string) {
     if (!active) return;
@@ -285,6 +352,8 @@ function AdminPanel({
     try {
       const created = await sendMessage(active.id, "admin", content);
       setMessages((prev) => [...prev, created]);
+      markAdminConversationRead(active.id, created.created_at);
+      setReads(loadAdminInboxReads());
       setInbox((prev) => {
         const existing = prev.find((row) => row.id === active.id);
         const nextRow: ConversationWithPreview = existing
@@ -314,6 +383,7 @@ function AdminPanel({
     setActive(null);
     setMessages([]);
     setPickingSubscriber(false);
+    setPickerSearch("");
     void loadInbox();
   }
 
@@ -353,27 +423,46 @@ function AdminPanel({
           title="New Message"
           subtitle="Choose a subscriber"
           onClose={onClose}
-          onBack={() => setPickingSubscriber(false)}
+          onBack={() => {
+            setPickingSubscriber(false);
+            setPickerSearch("");
+          }}
         />
+        <div className="border-b border-parchment px-5 py-3">
+          <input
+            type="search"
+            value={pickerSearch}
+            onChange={(e) => setPickerSearch(e.target.value)}
+            placeholder="Search subscribers…"
+            aria-label="Search subscribers"
+            className="w-full border border-parchment bg-paper px-3 py-2 font-sans text-sm text-ink placeholder:text-ink/40 outline-none focus:border-ink/30"
+          />
+        </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <ul className="divide-y divide-parchment">
-            {subscribers.map((sub) => (
-              <li key={sub.id}>
-                <button
-                  type="button"
-                  onClick={() => void openSubscriberThread(sub.id)}
-                  className="flex w-full items-baseline justify-between gap-3 px-5 py-4 text-left transition-opacity hover:opacity-80"
-                >
-                  <span className="font-display text-base text-ink">
-                    {sub.name}
-                  </span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
-                    {sub.id}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          {pickerSubscribers.length === 0 ? (
+            <p className="px-5 py-8 font-sans text-sm text-ink/55">
+              No subscribers match that search.
+            </p>
+          ) : (
+            <ul className="divide-y divide-parchment">
+              {pickerSubscribers.map((sub) => (
+                <li key={sub.id}>
+                  <button
+                    type="button"
+                    onClick={() => void openSubscriberThread(sub.id)}
+                    className="flex w-full items-baseline justify-between gap-3 px-5 py-4 text-left transition-opacity hover:opacity-80"
+                  >
+                    <span className="font-display text-base text-ink">
+                      {sub.name}
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
+                      {sub.id}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </>
     );
@@ -391,18 +480,26 @@ function AdminPanel({
           >
             + New Message
           </button>
-          <label className="ml-auto flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/55">
-            <span className="sr-only">Sort</span>
-            <select
-              value={sortMode}
-              onChange={(e) => setSortMode(e.target.value as SortMode)}
-              className="border border-parchment bg-paper px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink outline-none"
-              aria-label="Sort conversations"
+          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+            <ControlChip
+              active={unreadOnly}
+              onClick={() => setUnreadOnly((prev) => !prev)}
             >
-              <option value="newest">Sort: Newest</option>
-              <option value="oldest">Sort: Oldest</option>
-            </select>
-          </label>
+              Unread
+            </ControlChip>
+            <ControlChip
+              active={sortMode === "newest"}
+              onClick={() => setSortMode("newest")}
+            >
+              Newest
+            </ControlChip>
+            <ControlChip
+              active={sortMode === "az"}
+              onClick={() => setSortMode("az")}
+            >
+              A–Z
+            </ControlChip>
+          </div>
         </div>
         <input
           type="search"
@@ -423,33 +520,42 @@ function AdminPanel({
           <p className="px-5 py-8 font-sans text-sm text-ink/55">Loading...</p>
         ) : visibleInbox.length === 0 ? (
           <p className="px-5 py-8 font-sans text-sm text-ink/55">
-            {search.trim()
-              ? "No conversations match that name."
+            {search.trim() || unreadOnly
+              ? "No conversations match those filters."
               : "No active conversations yet."}
           </p>
         ) : (
           <ul className="divide-y divide-parchment">
-            {visibleInbox.map((row) => (
-              <li key={row.id}>
-                <button
-                  type="button"
-                  onClick={() => void openSubscriberThread(row.subscriber_id)}
-                  className="w-full px-5 py-4 text-left transition-opacity hover:opacity-80"
-                >
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="font-display text-base text-ink">
-                      {row.subscriber_name}
+            {visibleInbox.map((row) => {
+              const unread = isAdminUnread(row.lastMessage, row.id, reads);
+              return (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    onClick={() => void openSubscriberThread(row.subscriber_id)}
+                    className="w-full px-5 py-4 text-left transition-opacity hover:opacity-80"
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="flex items-center gap-2 font-display text-base text-ink">
+                        {unread ? (
+                          <span
+                            className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-oxblood"
+                            aria-label="Unread"
+                          />
+                        ) : null}
+                        {row.subscriber_name}
+                      </p>
+                      <p className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
+                        {formatMessageTime(row.lastActivityAt)}
+                      </p>
+                    </div>
+                    <p className="mt-1.5 line-clamp-2 font-sans text-sm text-ink/60">
+                      {row.lastMessage?.content}
                     </p>
-                    <p className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/45">
-                      {formatMessageTime(row.lastActivityAt)}
-                    </p>
-                  </div>
-                  <p className="mt-1.5 line-clamp-2 font-sans text-sm text-ink/60">
-                    {row.lastMessage?.content}
-                  </p>
-                </button>
-              </li>
-            ))}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

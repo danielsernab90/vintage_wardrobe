@@ -23,7 +23,7 @@ const itemClass =
   "block w-full px-4 py-3 text-left font-sans text-[11px] font-medium uppercase tracking-[0.22em] text-ink transition-opacity hover:opacity-60";
 
 export function AccountMenu() {
-  const { role, signInAsCustomer, signInAsAdmin, signOut } = useAuth();
+  const { role, signInAsCustomer, signInAsAdmin } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [showSignInOptions, setShowSignInOptions] = useState(false);
@@ -61,12 +61,6 @@ export function AccountMenu() {
       if (!next) setShowSignInOptions(false);
       return next;
     });
-  }
-
-  function handleSignOut() {
-    signOut();
-    setShowSignInOptions(false);
-    setOpen(false);
   }
 
   return (
@@ -143,14 +137,10 @@ export function AccountMenu() {
                 My Closet
               </Link>
               <div className="h-px bg-parchment" aria-hidden="true" />
-              <button
-                type="button"
-                role="menuitem"
-                className={itemClass}
-                onClick={handleSignOut}
-              >
+              {/* Native anchor: full navigation remounts Auth as logged-out (in-memory). */}
+              <a href="/" role="menuitem" className={itemClass}>
                 Sign Out
-              </button>
+              </a>
             </>
           ) : null}
 
@@ -165,14 +155,9 @@ export function AccountMenu() {
                 Admin Dashboard
               </Link>
               <div className="h-px bg-parchment" aria-hidden="true" />
-              <button
-                type="button"
-                role="menuitem"
-                className={itemClass}
-                onClick={handleSignOut}
-              >
+              <a href="/" role="menuitem" className={itemClass}>
                 Sign Out
-              </button>
+              </a>
             </>
           ) : null}
         </div>
