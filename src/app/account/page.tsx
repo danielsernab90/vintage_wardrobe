@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { OrnamentDivider } from "@/components/OrnamentDivider";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
+import { CustomerMessages } from "@/components/CustomerMessages";
 import { GarmentImage } from "@/components/GarmentImage";
 import { ButtonLink } from "@/components/ButtonLink";
 import {
@@ -188,6 +189,8 @@ export default function AccountPage() {
             </div>
           </div>
         </div>
+
+        <CustomerMessages />
 
         <div className="mt-16 flex w-full flex-col items-center border-t border-parchment pt-14 text-center md:mt-20 md:pt-16">
           <h2 className="font-display text-[clamp(1.5rem,3vw,2.25rem)] font-medium leading-snug text-ink">

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ActivityLog } from "@/components/ActivityLog";
+import { AdminMessages } from "@/components/AdminMessages";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { CyclePrice } from "@/components/CyclePrice";
 import { ImageManagementModal } from "@/components/ImageManagementModal";
@@ -450,6 +451,7 @@ export function InventoryDashboard() {
         ) : null}
 
         <TurnaroundPipeline />
+        <AdminMessages />
         <SubscriberRoster />
         <SourcingAlerts />
         <ActivityLog />
