@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ActivityLog } from "@/components/ActivityLog";
 import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { DecisionQueue } from "@/components/DecisionQueue";
 import { IncidentLogModal } from "@/components/IncidentLogModal";
@@ -364,6 +365,7 @@ export function InventoryDashboard() {
         <TurnaroundPipeline />
         <SubscriberRoster />
         <SourcingAlerts />
+        <ActivityLog />
       </div>
     </section>
   );
