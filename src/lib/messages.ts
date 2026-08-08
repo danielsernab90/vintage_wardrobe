@@ -23,9 +23,8 @@ export type ConversationWithPreview = Conversation & {
 };
 
 /**
- * Supabase seed ID for James Whitaker (My Closet mock user).
- * Note: local Subscriber Roster uses MEM-001 for the same person —
- * messaging always uses the Supabase subscriber_id.
+ * Supabase / roster ID for James Whitaker (My Closet mock customer).
+ * Single source of truth: SUB-005 across roster + conversations.
  */
 export const JAMES_WHITAKER_SUBSCRIBER_ID = "SUB-005";
 
@@ -49,6 +48,27 @@ export async function fetchConversationBySubscriberId(subscriberId: string) {
 
   if (error) throw error;
   return data as Conversation | null;
+}
+
+/** Create a conversation row for a roster subscriber (idempotent via lookup first). */
+export async function getOrCreateConversation(
+  subscriberId: string,
+  subscriberName: string,
+): Promise<Conversation> {
+  const existing = await fetchConversationBySubscriberId(subscriberId);
+  if (existing) return existing;
+
+  const { data, error } = await supabase
+    .from("conversations")
+    .insert({
+      subscriber_id: subscriberId,
+      subscriber_name: subscriberName,
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data as Conversation;
 }
 
 export async function fetchMessages(conversationId: string) {
@@ -111,16 +131,17 @@ export async function fetchInbox(): Promise<ConversationWithPreview[]> {
     }
   }
 
-  const rows: ConversationWithPreview[] = (
-    (conversations ?? []) as Conversation[]
-  ).map((conversation) => {
+  // Inbox lists only active conversations (at least one message).
+  const rows: ConversationWithPreview[] = [];
+  for (const conversation of (conversations ?? []) as Conversation[]) {
     const lastMessage = latestByConversation.get(conversation.id) ?? null;
-    return {
+    if (!lastMessage) continue;
+    rows.push({
       ...conversation,
       lastMessage,
-      lastActivityAt: lastMessage?.created_at ?? conversation.created_at,
-    };
-  });
+      lastActivityAt: lastMessage.created_at,
+    });
+  }
 
   return rows.sort((a, b) =>
     b.lastActivityAt.localeCompare(a.lastActivityAt),

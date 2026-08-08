@@ -5,7 +5,10 @@ import Link from "next/link";
 import { AccountMenu } from "./AccountMenu";
 import { CartButton } from "./CartButton";
 import { CartDrawer } from "./CartDrawer";
+import { MessagesPanel } from "./MessagesPanel";
 import { SearchModal } from "./SearchModal";
+import { useAuth } from "@/context/AuthContext";
+import { useMessagesUi } from "@/context/MessagesUiContext";
 
 const links = [
   { href: "/", label: "Home" },
@@ -23,7 +26,22 @@ function SearchIcon() {
   );
 }
 
+function MessagesIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 6.5h15v9.5H9.5L5 19.5v-3H4.5V6.5Z"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function SiteNav() {
+  const { role } = useAuth();
+  const { open, openInbox, close } = useMessagesUi();
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
@@ -44,6 +62,26 @@ export function SiteNav() {
                 </Link>
               </li>
             ))}
+            {role === "customer" ? (
+              <li>
+                <Link
+                  href="/account"
+                  className="font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-ink transition-opacity hover:opacity-60 sm:text-[11px] sm:tracking-[0.22em]"
+                >
+                  My Closet
+                </Link>
+              </li>
+            ) : null}
+            {role === "admin" ? (
+              <li>
+                <Link
+                  href="/admin"
+                  className="font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-ink transition-opacity hover:opacity-60 sm:text-[11px] sm:tracking-[0.22em]"
+                >
+                  Dashboard
+                </Link>
+              </li>
+            ) : null}
           </ul>
 
           <div className="flex shrink-0 items-center gap-3 text-ink sm:gap-4 md:gap-5">
@@ -56,6 +94,17 @@ export function SiteNav() {
             >
               <SearchIcon />
             </button>
+            {role ? (
+              <button
+                type="button"
+                className="p-0.5 transition-opacity hover:opacity-60"
+                aria-label="Messages"
+                aria-expanded={open}
+                onClick={() => openInbox()}
+              >
+                <MessagesIcon />
+              </button>
+            ) : null}
             <AccountMenu />
             <CartButton />
           </div>
@@ -64,6 +113,7 @@ export function SiteNav() {
       </header>
       <CartDrawer />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <MessagesPanel open={open} onClose={close} />
     </>
   );
 }

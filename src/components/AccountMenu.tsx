@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -23,6 +24,7 @@ const itemClass =
 
 export function AccountMenu() {
   const { role, signInAsCustomer, signInAsAdmin, signOut } = useAuth();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [showSignInOptions, setShowSignInOptions] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -98,6 +100,7 @@ export function AccountMenu() {
                     signInAsCustomer();
                     setShowSignInOptions(false);
                     setOpen(false);
+                    router.push("/account");
                   }}
                 >
                   Continue as Customer
@@ -111,6 +114,7 @@ export function AccountMenu() {
                     signInAsAdmin();
                     setShowSignInOptions(false);
                     setOpen(false);
+                    router.push("/admin");
                   }}
                 >
                   Continue as Admin

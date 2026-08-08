@@ -14,6 +14,8 @@ import {
   isDiscounted,
   type InventoryItem,
 } from "@/data/inventory";
+import { compressImageFile } from "@/lib/compressImage";
+import { uploadGarmentPhoto } from "@/lib/garmentPhotos";
 
 type Props = {
   mode: "add" | "edit";
@@ -81,6 +83,8 @@ export function InventoryItemModal({
   );
   const [error, setError] = useState<string | null>(null);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
+  const [compressing, setCompressing] = useState(false);
+  const [busyLabel, setBusyLabel] = useState<string | null>(null);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -111,17 +115,34 @@ export function InventoryItemModal({
     setError(null);
   }
 
-  function handlePhotoChange(fileList: FileList | null) {
+  async function handlePhotoChange(fileList: FileList | null) {
     const file = fileList?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setError("Please choose an image file.");
       return;
     }
-    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-    const url = URL.createObjectURL(file);
-    setPreviewObjectUrl(url);
-    updateField("image", url);
+    setError(null);
+    setCompressing(true);
+    setBusyLabel("Compressing…");
+    try {
+      const result = await compressImageFile(file);
+      setBusyLabel("Uploading…");
+      const itemId =
+        (mode === "edit" && item?.id) ||
+        form.id.trim().toUpperCase() ||
+        "UPLOAD";
+      const uploaded = await uploadGarmentPhoto(itemId, result.file);
+      URL.revokeObjectURL(result.objectUrl);
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+      setPreviewObjectUrl(null);
+      updateField("image", uploaded.publicUrl);
+    } catch {
+      setError("Could not upload that image. Try another file.");
+    } finally {
+      setCompressing(false);
+      setBusyLabel(null);
+    }
   }
 
   function handleSubmit(event: React.FormEvent) {
@@ -417,9 +438,15 @@ export function InventoryItemModal({
               id="inv-photo"
               type="file"
               accept="image/*"
-              onChange={(e) => handlePhotoChange(e.target.files)}
-              className="mt-1.5 block w-full font-sans text-sm text-ink/70 file:mr-3 file:border-0 file:bg-ink file:px-3 file:py-2 file:font-sans file:text-[10px] file:font-medium file:uppercase file:tracking-[0.16em] file:text-paper"
+              disabled={compressing}
+              onChange={(e) => void handlePhotoChange(e.target.files)}
+              className="mt-1.5 block w-full font-sans text-sm text-ink/70 file:mr-3 file:border-0 file:bg-ink file:px-3 file:py-2 file:font-sans file:text-[10px] file:font-medium file:uppercase file:tracking-[0.16em] file:text-paper disabled:opacity-50"
             />
+            {busyLabel ? (
+              <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.16em] text-ink/50">
+                {busyLabel}
+              </p>
+            ) : null}
             {form.image ? (
               <div className="relative mt-3 h-28 w-24 overflow-hidden border border-parchment bg-parchment">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -446,7 +473,8 @@ export function InventoryItemModal({
             </button>
             <button
               type="submit"
-              className="bg-ink px-4 py-2.5 font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-paper transition-opacity hover:opacity-80"
+              disabled={compressing}
+              className="bg-ink px-4 py-2.5 font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               {mode === "add" ? "Add to Inventory" : "Save Changes"}
             </button>

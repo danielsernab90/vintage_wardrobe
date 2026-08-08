@@ -15,9 +15,9 @@ export type RentalHistoryEntry = {
 
 const whitaker = getSubscriberByName("James Whitaker");
 
-/** Demo My Closet member — same person as MEM-001 on the admin roster. */
+/** Demo My Closet member — same person as SUB-005 on roster + Supabase. */
 export const mockMember = {
-  id: whitaker?.id ?? "MEM-001",
+  id: whitaker?.id ?? "SUB-005",
   name: whitaker?.name ?? "James Whitaker",
   plan: whitaker?.tier ?? "Signature",
   memberSince: "March 2026",

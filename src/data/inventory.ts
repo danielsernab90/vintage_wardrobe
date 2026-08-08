@@ -46,6 +46,8 @@ export type InventoryItem = Garment & {
   originalPrice?: number;
   /** Percent applied when originalPrice is set. */
   discountPercent?: number;
+  /** Latest return decision persisted on the items row (if any). */
+  decision?: QueueDecision;
   /** All attached photos (at least one). `image` mirrors the primary src. */
   images: SpecimenImage[];
   primaryImageId: string;

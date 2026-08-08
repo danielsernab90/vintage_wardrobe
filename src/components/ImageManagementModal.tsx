@@ -4,6 +4,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useInventory } from "@/context/InventoryContext";
 import type { InventoryItem } from "@/data/inventory";
+import { compressImageFile } from "@/lib/compressImage";
+import {
+  deleteGarmentPhotoByUrl,
+  uploadGarmentPhoto,
+} from "@/lib/garmentPhotos";
 
 type Props = {
   item: InventoryItem;
@@ -17,6 +22,9 @@ export function ImageManagementModal({ item, onClose }: Props) {
     useInventory();
   const live = getById(item.id) ?? item;
   const [index, setIndex] = useState(0);
+  const [compressing, setCompressing] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [busyLabel, setBusyLabel] = useState<string | null>(null);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -42,13 +50,42 @@ export function ImageManagementModal({ item, onClose }: Props) {
   const isPrimary = current?.id === live.primaryImageId;
   const canDelete = live.images.length > 1 && !isPrimary;
 
-  function handleUpload(files: FileList | null) {
+  async function handleUpload(files: FileList | null) {
     const file = files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
-    const url = URL.createObjectURL(file);
-    addItemImage(live.id, url);
-    setIndex(live.images.length); // new image will be last
-    if (fileRef.current) fileRef.current.value = "";
+    setUploadError(null);
+    setCompressing(true);
+    setBusyLabel("Compressing…");
+    try {
+      const result = await compressImageFile(file);
+      setBusyLabel("Uploading…");
+      const uploaded = await uploadGarmentPhoto(live.id, result.file);
+      URL.revokeObjectURL(result.objectUrl);
+      addItemImage(live.id, uploaded.publicUrl);
+      setIndex(live.images.length); // new image will be last
+    } catch {
+      setUploadError("Could not upload that image. Try another file.");
+    } finally {
+      setCompressing(false);
+      setBusyLabel(null);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function handleDelete() {
+    if (!current || !canDelete) return;
+    setUploadError(null);
+    setCompressing(true);
+    setBusyLabel("Deleting…");
+    try {
+      await deleteGarmentPhotoByUrl(current.src);
+      removeItemImage(live.id, current.id);
+    } catch {
+      setUploadError("Could not delete that photo from storage.");
+    } finally {
+      setCompressing(false);
+      setBusyLabel(null);
+    }
   }
 
   if (!current) return null;
@@ -179,29 +216,33 @@ export function ImageManagementModal({ item, onClose }: Props) {
           {canDelete ? (
             <button
               type="button"
-              onClick={() => {
-                removeItemImage(live.id, current.id);
-              }}
-              className="border border-oxblood/40 px-3 py-2.5 font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-oxblood transition-opacity hover:opacity-80"
+              disabled={compressing}
+              onClick={() => void handleDelete()}
+              className="border border-oxblood/40 px-3 py-2.5 font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-oxblood transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               Delete
             </button>
           ) : null}
           <button
             type="button"
+            disabled={compressing}
             onClick={() => fileRef.current?.click()}
-            className="border border-ink/20 px-3 py-2.5 font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-ink transition-opacity hover:border-ink"
+            className="border border-ink/20 px-3 py-2.5 font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-ink transition-opacity hover:border-ink disabled:opacity-50"
           >
-            + Upload More
+            {busyLabel ?? "+ Upload More"}
           </button>
           <input
             ref={fileRef}
             type="file"
             accept="image/*"
+            disabled={compressing}
             className="sr-only"
-            onChange={(e) => handleUpload(e.target.files)}
+            onChange={(e) => void handleUpload(e.target.files)}
           />
         </div>
+        {uploadError ? (
+          <p className="mt-3 font-sans text-sm text-oxblood">{uploadError}</p>
+        ) : null}
 
         <div className="mt-5 border-t border-parchment pt-4">
           <Link

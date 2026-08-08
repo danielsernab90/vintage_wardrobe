@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollHint } from "@/components/ScrollHint";
+import { useMessagesUi } from "@/context/MessagesUiContext";
 import {
   subscribers,
   type Subscriber,
@@ -93,6 +94,62 @@ function SortHeader({
   );
 }
 
+function SubscriberNameMenu({ subscriber }: { subscriber: Subscriber }) {
+  const { openThreadForSubscriber } = useMessagesUi();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative inline-block" ref={rootRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="font-display text-base text-ink underline-offset-4 transition-opacity hover:opacity-70 hover:underline"
+      >
+        {subscriber.name}
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute left-0 top-full z-40 mt-1 min-w-[9rem] border border-brass bg-paper shadow-[0_6px_18px_rgba(28,26,23,0.1)]"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-4 py-2.5 text-left font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-opacity hover:opacity-60"
+            onClick={() => {
+              setOpen(false);
+              openThreadForSubscriber(subscriber.id);
+            }}
+          >
+            Message
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function SubscriberRoster() {
   const [sortKey, setSortKey] = useState<SortKey>("joinDate");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -122,7 +179,7 @@ export function SubscriberRoster() {
         </h2>
         <p className="mt-2 max-w-2xl font-sans text-sm text-ink/65">
           Representative sample of the active base — identities used across
-          operations views. Read-only for this pass.
+          operations views. Click a name to message.
         </p>
       </div>
 
@@ -130,7 +187,7 @@ export function SubscriberRoster() {
       <ul className="space-y-0 divide-y divide-parchment px-5 py-2 md:hidden">
         {rows.map((sub) => (
           <li key={sub.id} className="py-4">
-            <p className="font-display text-lg text-ink">{sub.name}</p>
+            <SubscriberNameMenu subscriber={sub} />
             <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink/55">
               {sub.tier} · Joined {formatJoinDate(sub.joinDate)}
             </p>
@@ -165,8 +222,8 @@ export function SubscriberRoster() {
           <tbody>
             {rows.map((sub) => (
               <tr key={sub.id} className="border-b border-parchment/70">
-                <td className="py-3.5 pr-4 font-display text-base text-ink">
-                  {sub.name}
+                <td className="py-3.5 pr-4">
+                  <SubscriberNameMenu subscriber={sub} />
                 </td>
                 <td className="py-3.5 pr-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink/70">
                   {sub.tier}

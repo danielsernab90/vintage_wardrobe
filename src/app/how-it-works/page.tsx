@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ConditionGradeTag } from "@/components/ConditionGradeTag";
 import { OrnamentDivider } from "@/components/OrnamentDivider";
 import { JoinWaitlistButton } from "@/components/JoinWaitlistButton";
 
@@ -28,6 +29,22 @@ const steps = [
     number: "04",
     title: "Swap or Renew",
     body: "Send back what you're done with, receive your next rotation, or extend a favorite piece.",
+  },
+] as const;
+
+const grades = [
+  {
+    grade: "A" as const,
+    description: "Light use, clean structure",
+  },
+  {
+    grade: "B" as const,
+    description:
+      "Honest wear: fading, soft fabric, minor repairs — still wears well",
+  },
+  {
+    grade: "C" as const,
+    description: "Heavier character and visible patina",
   },
 ] as const;
 
@@ -72,11 +89,30 @@ export default function HowItWorksPage() {
             Care &amp; Condition
           </h2>
           <p className="mt-5 max-w-2xl font-sans text-sm leading-relaxed text-ink/75 md:text-[0.95rem]">
-            Every piece is graded A, B, or C based on wear: Grade A shows light
-            use and clean structure; Grade B carries honest wear—fading, soft
-            fabric, minor repairs—that still wears well; Grade C has heavier
-            character and visible patina. Lower grades are priced lower, not
-            hidden—condition is part of the specimen plate, not a flaw to obscure.
+            Every piece is graded A, B, or C based on wear.
+          </p>
+          <ul className="mt-8 max-w-2xl list-none space-y-6">
+            {grades.map((item) => (
+              <li key={item.grade} className="flex gap-3 sm:gap-4">
+                <span
+                  className="mt-2.5 h-1.5 w-1.5 shrink-0 bg-brass"
+                  aria-hidden="true"
+                />
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                  <span className="inline-flex items-center gap-2.5 font-sans text-sm text-ink/55 md:text-[0.95rem]">
+                    Grade
+                    <ConditionGradeTag grade={item.grade} />
+                  </span>
+                  <span className="font-sans text-sm leading-relaxed text-ink/75 md:text-[0.95rem]">
+                    — {item.description}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-8 max-w-2xl font-sans text-sm leading-relaxed text-ink/75 md:text-[0.95rem]">
+            Lower grades are priced lower, not hidden — condition is part of the
+            specimen plate, not a flaw to obscure.
           </p>
         </div>
 
